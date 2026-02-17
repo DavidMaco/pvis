@@ -21,9 +21,20 @@ A comprehensive procurement intelligence engine for manufacturing firms, designe
 7. Run app: `python app.py`
 8. Run tests: `python -m unittest tests/test_etl.py`
 
-## Project Structure
+## Deployment
 
-- `data_ingestion/`: ETL pipelines and data collection scripts
-- `analytics/`: ML models and analysis modules
-- `ui/`: Web interface and dashboards
-- `tests/`: Unit and integration tests
+For production:
+- Switch to PostgreSQL: Update config.py with connection string.
+- Deploy Flask app on AWS Elastic Beanstalk or Heroku.
+- Use Docker for containerization.
+- Set up monitoring with AWS CloudWatch.
+
+## Features Implemented
+
+- ETL Pipeline
+- Spend Analysis and Forecasting
+- Supplier Scoring and Profiling
+- Market Intelligence
+- Risk Assessment and Compliance
+- Contract Analysis with NLP
+- Web Dashboard
