@@ -1,0 +1,5 @@
+supplier_name,location,rating,amount,date,category
+Supplier A,USA,4.5,10000,2023-01-01,Raw Materials
+Supplier B,China,3.8,15000,2023-01-02,Components
+Supplier C,Germany,4.2,8000,2023-01-03,Equipment
+Supplier A,USA,4.5,12000,2023-02-01,Raw Materials

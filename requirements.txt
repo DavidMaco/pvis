@@ -6,3 +6,7 @@ psycopg2-binary
 flask
 plotly
 apache-airflow
+spacy
+requests
+joblib
+matplotlib

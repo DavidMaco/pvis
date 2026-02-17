@@ -12,10 +12,14 @@ A comprehensive procurement intelligence engine for manufacturing firms, designe
 
 ## Setup
 
-1. Clone the repository
-2. Install dependencies: `pip install -r requirements.txt`
-3. Set up PostgreSQL database
-4. Run the application: `python app.py` (assuming main file)
+1. Install Python 3.9+
+2. Create virtual environment: `python -m venv venv`
+3. Activate: `venv\Scripts\activate` (Windows)
+4. Install dependencies: `pip install -r requirements.txt`
+5. Run ETL: `python data_ingestion/etl_pipeline.py`
+6. Run analytics: `python analytics/spend_analysis.py` or `python analytics/price_forecast.py`
+7. Run app: `python app.py`
+8. Run tests: `python -m unittest tests/test_etl.py`
 
 ## Project Structure
 
