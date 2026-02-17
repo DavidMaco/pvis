@@ -1,4 +1,5 @@
 import unittest
+import pandas as pd
 from data_ingestion.etl_pipeline import extract_data, transform_data
 
 class TestETL(unittest.TestCase):
