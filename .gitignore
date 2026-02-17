@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+procurement.db
+.env
+.DS_Store
+.vscode/
+.pip-wheel-metadata/
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.log
+*.sqlite3

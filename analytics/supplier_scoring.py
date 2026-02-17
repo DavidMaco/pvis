@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import pandas as pd
 
@@ -10,12 +10,12 @@ Session = sessionmaker(bind=engine)
 def get_supplier_data():
     """Retrieve supplier data."""
     session = Session()
-    query = session.execute("""
+    query = session.execute(text("""
         SELECT s.id, s.name, s.location, s.rating, AVG(i.amount) as avg_spend, COUNT(i.id) as invoice_count
         FROM suppliers s
         LEFT JOIN invoices i ON s.id = i.supplier_id
         GROUP BY s.id, s.name, s.location, s.rating
-    """)
+    """))
     df = pd.DataFrame(query.fetchall(), columns=['id', 'name', 'location', 'rating', 'avg_spend', 'invoice_count'])
     session.close()
     return df

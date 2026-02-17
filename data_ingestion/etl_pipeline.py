@@ -1,9 +1,9 @@
 import pandas as pd
 from sqlalchemy import create_engine, Column, Integer, String, Float, Date
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 import os
-from config import DATABASE_URL
+
+DATABASE_URL = 'sqlite:///procurement.db'
 engine = create_engine(DATABASE_URL)
 Base = declarative_base()
 

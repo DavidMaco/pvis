@@ -48,7 +48,7 @@ def dashboard():
     </body>
     </html>
     """
-    return render_template_string(html)
+    return html
 
 if __name__ == '__main__':
     app.run(debug=True)
