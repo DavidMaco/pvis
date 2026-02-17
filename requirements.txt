@@ -1,0 +1,8 @@
+pandas
+scikit-learn
+tensorflow
+sqlalchemy
+psycopg2-binary
+flask
+plotly
+apache-airflow
