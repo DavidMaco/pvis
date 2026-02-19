@@ -7,7 +7,7 @@ from analytics.market_intelligence import analyze_market_trends, fetch_commodity
 
 app = Flask(__name__)
 
-DATABASE_URL = 'sqlite:///procurement.db'
+DATABASE_URL = 'mysql+pymysql://root:Maconoelle86@localhost:3306/pro_intel_2'
 engine = create_engine(DATABASE_URL)
 
 def get_data():

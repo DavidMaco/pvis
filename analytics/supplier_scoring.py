@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker
 import pandas as pd
 
 # Database setup
-DATABASE_URL = 'sqlite:///procurement.db'
+DATABASE_URL = 'mysql+pymysql://root:Maconoelle86@localhost:3306/pro_intel_2'
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 

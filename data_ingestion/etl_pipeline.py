@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, Date
 from sqlalchemy.orm import declarative_base, sessionmaker
 import os
 
-DATABASE_URL = 'sqlite:///procurement.db'
+DATABASE_URL = 'mysql+pymysql://root:Maconoelle86@localhost:3306/pro_intel_2'
 engine = create_engine(DATABASE_URL)
 Base = declarative_base()
 
