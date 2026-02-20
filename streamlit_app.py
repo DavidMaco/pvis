@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from sqlalchemy import create_engine, text
 from datetime import datetime
+import requests
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -46,6 +47,37 @@ def run_query(query: str, params=None) -> pd.DataFrame:
     except Exception as e:
         st.error(f"Database query failed: {e}")
         return pd.DataFrame()
+
+
+@st.cache_data(ttl=3600)  # refresh every hour
+def _fetch_live_ngn_rate() -> float:
+    """
+    Fetch the real-time NGN/USD exchange rate from a free public API.
+    Falls back to the latest rate stored in the database if the API is
+    unreachable or returns an error.
+    """
+    # Primary: exchangerate.host (no key required)
+    apis = [
+        ("https://open.er-api.com/v6/latest/USD", lambda j: float(j["rates"]["NGN"])),
+        ("https://api.frankfurter.dev/v1/latest?base=USD&symbols=NGN", lambda j: float(j["rates"]["NGN"])),
+    ]
+    for url, parser in apis:
+        try:
+            resp = requests.get(url, timeout=5)
+            if resp.ok:
+                return parser(resp.json())
+        except Exception:
+            continue
+
+    # Fallback: latest rate from seed data
+    df = run_query("""
+        SELECT fx.rate_to_usd
+        FROM fx_rates fx
+        JOIN currencies c ON fx.currency_id = c.currency_id
+        WHERE UPPER(c.currency_code) = 'NGN'
+        ORDER BY fx.rate_date DESC LIMIT 1
+    """)
+    return float(df.iloc[0]["rate_to_usd"]) if not df.empty else 0.0
 
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
@@ -125,21 +157,14 @@ if page == "🏠 Executive Summary":
     )
     ccc_val = float(ccc_df.iloc[0]["ccc"] or 0) if not ccc_df.empty else 0
 
-    # Current NGN rate
-    ngn_df = run_query("""
-        SELECT fx.rate_to_usd
-        FROM fx_rates fx
-        JOIN currencies c ON fx.currency_id = c.currency_id
-        WHERE UPPER(c.currency_code) = 'NGN'
-        ORDER BY fx.rate_date DESC LIMIT 1
-    """)
-    ngn_rate = float(ngn_df.iloc[0]["rate_to_usd"]) if not ngn_df.empty else 0
+    # Current NGN rate — live API with DB fallback
+    ngn_rate = _fetch_live_ngn_rate()
 
     col1.metric("Total Spend (USD)", f"${total_spend:,.0f}")
     col2.metric("FX Exposure", f"{fx_pct:.1f}%")
     col3.metric("Avg Risk Score", f"{avg_risk:.1f}")
     col4.metric("CCC (days)", f"{ccc_val:,.0f}")
-    col5.metric("USD/NGN", f"₦{ngn_rate:,.2f}")
+    col5.metric("USD/NGN (live)", f"₦{ngn_rate:,.2f}")
 
     st.divider()
 
@@ -172,11 +197,11 @@ if page == "🏠 Executive Summary":
         st.subheader("Monthly Procurement Trend")
         trend_df = run_query("""
             SELECT
-                DATE_FORMAT(d.full_date, '%%Y-%%m') AS month,
+                DATE_FORMAT(d.full_date, '%Y-%m') AS month,
                 SUM(f.total_usd_value) AS spend_usd
             FROM fact_procurement f
             JOIN dim_date d ON f.date_key = d.date_key
-            GROUP BY month
+            GROUP BY DATE_FORMAT(d.full_date, '%Y-%m')
             ORDER BY month
         """)
         if not trend_df.empty:
