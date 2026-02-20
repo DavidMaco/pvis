@@ -422,6 +422,11 @@ def main():
     print("="*60)
     
     try:
+        # Disable FK checks for clean truncate-and-reload
+        with engine.connect() as conn:
+            conn.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+            conn.commit()
+
         # Populate dimensions first
         populate_dim_date()
         populate_dim_material()
@@ -436,12 +441,21 @@ def main():
         
         # Financial KPIs (if data available)
         populate_financial_kpis()
+
+        # Re-enable FK checks
+        with engine.connect() as conn:
+            conn.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+            conn.commit()
         
         print("="*60)
         print("✓ ETL Pipeline completed successfully!")
         print("="*60)
         
     except Exception as e:
+        # Re-enable FK checks even on failure
+        with engine.connect() as conn:
+            conn.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+            conn.commit()
         print(f"\n✗ ETL Pipeline failed: {str(e)}", file=sys.stderr)
         import traceback
         traceback.print_exc()

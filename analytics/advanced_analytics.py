@@ -261,8 +261,8 @@ if __name__ == "__main__":
     print("="*60)
     
     try:
-        # Run FX Monte Carlo simulation
-        run_fx_simulation(currency_id=1, days=90, simulations=10000)
+        # Run FX Monte Carlo simulation (NGN = currency_id 3)
+        run_fx_simulation(currency_id=3, days=90, simulations=10000)
         
         # Calculate supplier risk metrics
         run_supplier_risk()

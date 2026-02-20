@@ -1,0 +1,693 @@
+"""
+PVIS — Procurement Volatility Intelligence System
+Streamlit Executive Dashboard
+"""
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from sqlalchemy import create_engine, text
+from datetime import datetime
+
+# ── Page config ──────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="PVIS — Procurement Intelligence",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# ── Database connection ──────────────────────────────────────────────────────
+
+@st.cache_resource
+def get_engine():
+    """Create a cached SQLAlchemy engine from Streamlit secrets or env."""
+    try:
+        db = st.secrets["database"]
+        url = (
+            f"mysql+pymysql://{db['user']}:{db['password']}"
+            f"@{db['host']}:{db['port']}/{db['name']}"
+        )
+    except Exception:
+        url = "mysql+pymysql://root:Maconoelle86@localhost:3306/pro_intel_2"
+    return create_engine(url, pool_pre_ping=True, pool_recycle=300)
+
+
+engine = get_engine()
+
+
+def run_query(query: str, params=None) -> pd.DataFrame:
+    """Execute a read query and return a DataFrame."""
+    try:
+        return pd.read_sql(text(query), engine, params=params)
+    except Exception as e:
+        st.error(f"Database query failed: {e}")
+        return pd.DataFrame()
+
+
+# ── Sidebar ──────────────────────────────────────────────────────────────────
+
+with st.sidebar:
+    st.image(
+        "https://img.icons8.com/fluency/96/combo-chart.png",
+        width=64,
+    )
+    st.title("PVIS")
+    st.caption("Procurement Volatility Intelligence System")
+    st.divider()
+
+    page = st.radio(
+        "Navigation",
+        [
+            "🏠 Executive Summary",
+            "📈 FX Volatility & Monte Carlo",
+            "🏭 Supplier Risk Analysis",
+            "💰 Spend & Cost Analysis",
+            "🏦 Working Capital",
+            "🔄 Scenario Planning",
+            "⚙️ Pipeline Runner",
+        ],
+        index=0,
+    )
+
+    st.divider()
+    st.caption(f"Last refresh: {datetime.now():%Y-%m-%d %H:%M}")
+    if st.button("🔄 Clear cache & reload"):
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        st.rerun()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 1 — Executive Summary
+# ══════════════════════════════════════════════════════════════════════════════
+
+if page == "🏠 Executive Summary":
+    st.title("📊 Executive Summary")
+    st.markdown(
+        "Real-time visibility into **FX exposure**, **supplier risk**, and "
+        "**cash conversion** performance."
+    )
+
+    # ── KPI row ──────────────────────────────────────────────────────────────
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    # Total spend
+    spend_df = run_query(
+        "SELECT SUM(total_usd_value) AS spend FROM fact_procurement"
+    )
+    total_spend = float(spend_df.iloc[0]["spend"] or 0) if not spend_df.empty else 0
+
+    # FX exposure
+    fx_exp_df = run_query("""
+        SELECT
+            (SUM(CASE WHEN cur.currency_code != 'USD'
+                 THEN poi.quantity * poi.unit_price ELSE 0 END) * 100.0 /
+             NULLIF(SUM(poi.quantity * poi.unit_price), 0)) AS fx_pct
+        FROM purchase_orders po
+        JOIN purchase_order_items poi ON po.po_id = poi.po_id
+        JOIN currencies cur ON po.currency_id = cur.currency_id
+    """)
+    fx_pct = float(fx_exp_df.iloc[0]["fx_pct"] or 0) if not fx_exp_df.empty else 0
+
+    # Average composite risk
+    risk_df = run_query(
+        "SELECT AVG(composite_risk_score) AS avg_risk FROM supplier_performance_metrics"
+    )
+    avg_risk = float(risk_df.iloc[0]["avg_risk"] or 0) if not risk_df.empty else 0
+
+    # CCC
+    ccc_df = run_query(
+        "SELECT ccc FROM financial_kpis ORDER BY kpi_date DESC LIMIT 1"
+    )
+    ccc_val = float(ccc_df.iloc[0]["ccc"] or 0) if not ccc_df.empty else 0
+
+    # Current NGN rate
+    ngn_df = run_query("""
+        SELECT fx.rate_to_usd
+        FROM fx_rates fx
+        JOIN currencies c ON fx.currency_id = c.currency_id
+        WHERE UPPER(c.currency_code) = 'NGN'
+        ORDER BY fx.rate_date DESC LIMIT 1
+    """)
+    ngn_rate = float(ngn_df.iloc[0]["rate_to_usd"]) if not ngn_df.empty else 0
+
+    col1.metric("Total Spend (USD)", f"${total_spend:,.0f}")
+    col2.metric("FX Exposure", f"{fx_pct:.1f}%")
+    col3.metric("Avg Risk Score", f"{avg_risk:.1f}")
+    col4.metric("CCC (days)", f"{ccc_val:,.0f}")
+    col5.metric("USD/NGN", f"₦{ngn_rate:,.2f}")
+
+    st.divider()
+
+    # ── Charts row ───────────────────────────────────────────────────────────
+    left, right = st.columns(2)
+
+    with left:
+        st.subheader("Supplier Risk Ranking")
+        risk_data = run_query("""
+            SELECT s.supplier_name, spm.composite_risk_score
+            FROM supplier_performance_metrics spm
+            JOIN suppliers s ON spm.supplier_id = s.supplier_id
+            ORDER BY spm.composite_risk_score DESC
+            LIMIT 10
+        """)
+        if not risk_data.empty:
+            fig = px.bar(
+                risk_data,
+                x="composite_risk_score",
+                y="supplier_name",
+                orientation="h",
+                color="composite_risk_score",
+                color_continuous_scale="OrRd",
+                labels={"composite_risk_score": "Risk Score", "supplier_name": ""},
+            )
+            fig.update_layout(yaxis=dict(autorange="reversed"), height=400, showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+
+    with right:
+        st.subheader("Monthly Procurement Trend")
+        trend_df = run_query("""
+            SELECT
+                DATE_FORMAT(d.full_date, '%%Y-%%m') AS month,
+                SUM(f.total_usd_value) AS spend_usd
+            FROM fact_procurement f
+            JOIN dim_date d ON f.date_key = d.date_key
+            GROUP BY month
+            ORDER BY month
+        """)
+        if not trend_df.empty:
+            fig = px.area(
+                trend_df,
+                x="month",
+                y="spend_usd",
+                labels={"month": "Month", "spend_usd": "Spend (USD)"},
+            )
+            fig.update_layout(height=400)
+            st.plotly_chart(fig, use_container_width=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 2 — FX Volatility & Monte Carlo
+# ══════════════════════════════════════════════════════════════════════════════
+
+elif page == "📈 FX Volatility & Monte Carlo":
+    st.title("📈 FX Volatility & Monte Carlo Forecast")
+
+    # Currency selector
+    currencies_df = run_query("SELECT currency_id, currency_code FROM currencies")
+    if currencies_df.empty:
+        st.warning("No currencies found in database.")
+        st.stop()
+
+    currency_options = {
+        row["currency_code"]: int(row["currency_id"])
+        for _, row in currencies_df.iterrows()
+    }
+
+    sel_col, param_col = st.columns([1, 2])
+    with sel_col:
+        chosen_code = st.selectbox("Currency", list(currency_options.keys()), index=0)
+        chosen_id = currency_options[chosen_code]
+    with param_col:
+        sim_days = st.slider("Forecast horizon (days)", 30, 365, 90)
+        sim_count = st.select_slider(
+            "Simulations", options=[1000, 5000, 10000, 25000, 50000], value=10000
+        )
+
+    # Historical rates
+    hist_df = run_query(
+        f"SELECT rate_date, rate_to_usd FROM fx_rates WHERE currency_id = {chosen_id} ORDER BY rate_date"
+    )
+
+    if hist_df.empty:
+        st.warning(f"No FX data for {chosen_code}.")
+        st.stop()
+
+    st.subheader(f"Historical {chosen_code}/USD Rate")
+    fig_hist = px.line(hist_df, x="rate_date", y="rate_to_usd", labels={"rate_to_usd": f"{chosen_code} per 1 USD"})
+    fig_hist.update_layout(height=350)
+    st.plotly_chart(fig_hist, use_container_width=True)
+
+    # ── Run Monte Carlo ──────────────────────────────────────────────────────
+    if st.button("🎲 Run Monte Carlo Simulation", type="primary"):
+        hist_df["log_return"] = np.log(hist_df["rate_to_usd"] / hist_df["rate_to_usd"].shift(1))
+        hist_df = hist_df.dropna()
+        mu = hist_df["log_return"].mean()
+        sigma = hist_df["log_return"].std()
+        current_rate = float(hist_df["rate_to_usd"].iloc[-1])
+
+        dt = 1 / 252
+        np.random.seed(42)
+        paths = np.zeros((sim_count, sim_days))
+        for i in range(sim_count):
+            rate = current_rate
+            for d in range(sim_days):
+                shock = np.random.normal(mu * dt, sigma * np.sqrt(dt))
+                rate *= np.exp(shock)
+                paths[i, d] = rate
+
+        p5 = np.percentile(paths, 5, axis=0)
+        p50 = np.percentile(paths, 50, axis=0)
+        p95 = np.percentile(paths, 95, axis=0)
+
+        # Summary metrics
+        mcol1, mcol2, mcol3, mcol4 = st.columns(4)
+        mcol1.metric("Current Rate", f"{current_rate:,.4f}")
+        mcol2.metric("P5 (worst)", f"{p5[-1]:,.4f}")
+        mcol3.metric("P50 (median)", f"{p50[-1]:,.4f}")
+        mcol4.metric("P95 (best)", f"{p95[-1]:,.4f}")
+
+        # Fan chart
+        st.subheader("90-Day FX Forecast Band")
+        days_range = list(range(1, sim_days + 1))
+        fig_fan = go.Figure()
+        fig_fan.add_trace(go.Scatter(x=days_range, y=p95, mode="lines", line=dict(width=0), showlegend=False))
+        fig_fan.add_trace(
+            go.Scatter(
+                x=days_range, y=p5, fill="tonexty",
+                fillcolor="rgba(0,100,255,0.15)", line=dict(width=0),
+                name="5th–95th band",
+            )
+        )
+        fig_fan.add_trace(go.Scatter(x=days_range, y=p50, mode="lines", line=dict(color="#1d4f91", width=2), name="Median"))
+        fig_fan.update_layout(xaxis_title="Days Ahead", yaxis_title=f"{chosen_code} per 1 USD", height=400)
+        st.plotly_chart(fig_fan, use_container_width=True)
+
+        # Distribution histogram
+        st.subheader("Terminal Rate Distribution")
+        final_rates = paths[:, -1]
+        fig_dist = px.histogram(
+            x=final_rates, nbins=60,
+            labels={"x": f"{chosen_code} Rate at Day {sim_days}"},
+            opacity=0.8,
+        )
+        fig_dist.add_vline(x=np.percentile(final_rates, 5), line_dash="dash", line_color="red", annotation_text="P5")
+        fig_dist.add_vline(x=np.percentile(final_rates, 50), line_dash="dash", line_color="blue", annotation_text="P50")
+        fig_dist.add_vline(x=np.percentile(final_rates, 95), line_dash="dash", line_color="green", annotation_text="P95")
+        fig_dist.update_layout(height=350)
+        st.plotly_chart(fig_dist, use_container_width=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 3 — Supplier Risk Analysis
+# ══════════════════════════════════════════════════════════════════════════════
+
+elif page == "🏭 Supplier Risk Analysis":
+    st.title("🏭 Supplier Risk Analysis")
+
+    perf_df = run_query("""
+        SELECT s.supplier_name,
+               spm.avg_lead_time, spm.lead_time_stddev,
+               spm.avg_defect_rate, spm.cost_variance_pct,
+               spm.on_time_delivery_pct, spm.fx_exposure_pct,
+               spm.composite_risk_score
+        FROM supplier_performance_metrics spm
+        JOIN suppliers s ON spm.supplier_id = s.supplier_id
+        ORDER BY spm.composite_risk_score DESC
+    """)
+
+    if perf_df.empty:
+        st.warning("No supplier performance data. Run the analytics pipeline first.")
+        st.stop()
+
+    # ── Risk Heatmap ─────────────────────────────────────────────────────────
+    st.subheader("Risk Heatmap")
+    metrics = [
+        "avg_lead_time", "lead_time_stddev", "avg_defect_rate",
+        "cost_variance_pct", "on_time_delivery_pct", "fx_exposure_pct",
+        "composite_risk_score",
+    ]
+    labels = ["Lead Time", "LT Vol", "Defect %", "Cost Var %", "OTD %", "FX Exp %", "Composite"]
+    heat = perf_df.set_index("supplier_name")[metrics]
+    heat_norm = (heat - heat.min()) / (heat.max() - heat.min() + 1e-9)
+
+    fig_heat = px.imshow(
+        heat_norm.values,
+        y=heat_norm.index.tolist(),
+        x=labels,
+        color_continuous_scale="YlOrRd",
+        aspect="auto",
+    )
+    fig_heat.update_layout(height=max(350, len(heat_norm) * 45))
+    st.plotly_chart(fig_heat, use_container_width=True)
+
+    # ── Detail table ─────────────────────────────────────────────────────────
+    st.subheader("Detailed Metrics")
+    st.dataframe(
+        perf_df.style.format({
+            "avg_lead_time": "{:.1f}",
+            "lead_time_stddev": "{:.2f}",
+            "avg_defect_rate": "{:.2f}%",
+            "cost_variance_pct": "{:.2f}%",
+            "on_time_delivery_pct": "{:.1f}%",
+            "fx_exposure_pct": "{:.1f}%",
+            "composite_risk_score": "{:.2f}",
+        }).background_gradient(subset=["composite_risk_score"], cmap="YlOrRd"),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    # ── Lead time volatility ─────────────────────────────────────────────────
+    st.subheader("Lead Time Volatility")
+    fig_lt = make_subplots(specs=[[{"secondary_y": True}]])
+    fig_lt.add_trace(
+        go.Bar(x=perf_df["supplier_name"], y=perf_df["lead_time_stddev"], name="Volatility (σ)", marker_color="#3b82f6"),
+        secondary_y=False,
+    )
+    fig_lt.add_trace(
+        go.Scatter(x=perf_df["supplier_name"], y=perf_df["avg_lead_time"], name="Avg Lead Time", mode="lines+markers", marker_color="#ef4444"),
+        secondary_y=True,
+    )
+    fig_lt.update_layout(height=400)
+    fig_lt.update_yaxes(title_text="Std Dev (days)", secondary_y=False)
+    fig_lt.update_yaxes(title_text="Avg Lead Time (days)", secondary_y=True)
+    st.plotly_chart(fig_lt, use_container_width=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 4 — Spend & Cost Analysis
+# ══════════════════════════════════════════════════════════════════════════════
+
+elif page == "💰 Spend & Cost Analysis":
+    st.title("💰 Spend & Cost Analysis")
+
+    left, right = st.columns(2)
+
+    with left:
+        st.subheader("Spend by Supplier")
+        spend_sup = run_query("""
+            SELECT ds.supplier_name, SUM(f.total_usd_value) AS spend_usd
+            FROM fact_procurement f
+            JOIN dim_supplier ds ON f.supplier_key = ds.supplier_key
+            GROUP BY ds.supplier_name
+            ORDER BY spend_usd DESC
+        """)
+        if not spend_sup.empty:
+            fig = px.pie(spend_sup, names="supplier_name", values="spend_usd", hole=0.4)
+            fig.update_layout(height=400)
+            st.plotly_chart(fig, use_container_width=True)
+
+    with right:
+        st.subheader("Spend by Material Category")
+        spend_cat = run_query("""
+            SELECT dm.category, SUM(f.total_usd_value) AS spend_usd
+            FROM fact_procurement f
+            JOIN dim_material dm ON f.material_key = dm.material_key
+            GROUP BY dm.category
+            ORDER BY spend_usd DESC
+        """)
+        if not spend_cat.empty:
+            fig = px.pie(spend_cat, names="category", values="spend_usd", hole=0.4)
+            fig.update_layout(height=400)
+            st.plotly_chart(fig, use_container_width=True)
+
+    # ── Cost leakage ─────────────────────────────────────────────────────────
+    st.subheader("Cost Leakage by Category")
+    leak_df = run_query("""
+        SELECT m.category,
+               SUM((poi.unit_price - m.standard_cost) * poi.quantity) AS leakage_local
+        FROM purchase_order_items poi
+        JOIN materials m ON poi.material_id = m.material_id
+        WHERE poi.unit_price > m.standard_cost
+        GROUP BY m.category
+        ORDER BY leakage_local DESC
+    """)
+    if not leak_df.empty:
+        fig = px.bar(
+            leak_df, x="category", y="leakage_local",
+            color="leakage_local", color_continuous_scale="Reds",
+            labels={"leakage_local": "Leakage (Local Currency)", "category": "Category"},
+        )
+        fig.update_layout(height=400)
+        st.plotly_chart(fig, use_container_width=True)
+
+    # ── Annual spend summary ─────────────────────────────────────────────────
+    st.subheader("Annual Spend by Supplier")
+    annual_df = run_query("""
+        SELECT s.supplier_name, ss.year, ss.total_spend_usd
+        FROM supplier_spend_summary ss
+        JOIN suppliers s ON ss.supplier_id = s.supplier_id
+        ORDER BY ss.year, ss.total_spend_usd DESC
+    """)
+    if not annual_df.empty:
+        fig = px.bar(
+            annual_df, x="supplier_name", y="total_spend_usd",
+            color="year", barmode="group",
+            labels={"total_spend_usd": "Spend (USD)", "supplier_name": "Supplier"},
+        )
+        fig.update_layout(height=450)
+        st.plotly_chart(fig, use_container_width=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 5 — Working Capital
+# ══════════════════════════════════════════════════════════════════════════════
+
+elif page == "🏦 Working Capital":
+    st.title("🏦 Working Capital Optimization")
+
+    # ── Inventory trend ──────────────────────────────────────────────────────
+    st.subheader("Inventory Trend")
+    inv_df = run_query("""
+        SELECT snapshot_date, SUM(inventory_value_usd) AS total_inv
+        FROM inventory_snapshots
+        GROUP BY snapshot_date
+        ORDER BY snapshot_date
+    """)
+    if not inv_df.empty:
+        fig = px.area(inv_df, x="snapshot_date", y="total_inv", labels={"total_inv": "Inventory Value (USD)"})
+        fig.update_layout(height=350)
+        st.plotly_chart(fig, use_container_width=True)
+
+    # ── DPO vs DIO ───────────────────────────────────────────────────────────
+    left, right = st.columns(2)
+
+    with left:
+        st.subheader("Payables Trend (DPO proxy)")
+        pay_df = run_query(
+            "SELECT summary_date, accounts_payable_usd FROM payables_summary ORDER BY summary_date"
+        )
+        if not pay_df.empty:
+            fig = px.line(pay_df, x="summary_date", y="accounts_payable_usd")
+            fig.update_layout(height=300)
+            st.plotly_chart(fig, use_container_width=True)
+
+    with right:
+        st.subheader("Receivables Trend")
+        rec_df = run_query(
+            "SELECT summary_date, accounts_receivable_usd FROM receivables_summary ORDER BY summary_date"
+        )
+        if not rec_df.empty:
+            fig = px.line(rec_df, x="summary_date", y="accounts_receivable_usd")
+            fig.update_layout(height=300)
+            st.plotly_chart(fig, use_container_width=True)
+
+    # ── CCC ──────────────────────────────────────────────────────────────────
+    st.subheader("Cash Conversion Cycle")
+    kpi_df = run_query("SELECT kpi_date, dio, dpo, ccc FROM financial_kpis ORDER BY kpi_date DESC LIMIT 1")
+    if not kpi_df.empty:
+        row = kpi_df.iloc[0]
+        c1, c2, c3 = st.columns(3)
+        c1.metric("DIO (Days Inventory Outstanding)", f"{row['dio']:,.0f}")
+        c2.metric("DPO (Days Payable Outstanding)", f"{row['dpo']:,.0f}")
+        c3.metric("CCC (Cash Conversion Cycle)", f"{row['ccc']:,.0f}")
+
+        # Target CCC
+        target_dio = max(float(row["dio"]) * 0.9, 0)
+        target_dpo = float(row["dpo"]) * 1.1
+        target_ccc = target_dio - target_dpo
+        improvement = float(row["ccc"]) - target_ccc
+
+        st.info(
+            f"**Optimization target:** Reduce DIO by 10% → {target_dio:,.0f}, "
+            f"Extend DPO by 10% → {target_dpo:,.0f}. "
+            f"Potential CCC improvement: **{improvement:,.0f} days**"
+        )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 6 — Scenario Planning
+# ══════════════════════════════════════════════════════════════════════════════
+
+elif page == "🔄 Scenario Planning":
+    st.title("🔄 Scenario Planning & Negotiation Insights")
+
+    # ── FX Scenario Stress Test ──────────────────────────────────────────────
+    st.subheader("FX Landed Cost Stress Test")
+    st.markdown("Model the impact of FX shocks on total procurement spend.")
+
+    base_df = run_query("""
+        SELECT
+            SUM((poi.quantity * poi.unit_price) / COALESCE(fx.rate_to_usd, 1)) AS spend_usd,
+            SUM(CASE WHEN cur.currency_code != 'USD'
+                THEN (poi.quantity * poi.unit_price) / COALESCE(fx.rate_to_usd, 1)
+                ELSE 0 END) AS non_usd_spend
+        FROM purchase_orders po
+        JOIN purchase_order_items poi ON po.po_id = poi.po_id
+        JOIN currencies cur ON po.currency_id = cur.currency_id
+        LEFT JOIN fx_rates fx ON po.currency_id = fx.currency_id
+            AND fx.rate_date = (
+                SELECT MAX(rate_date) FROM fx_rates f2
+                WHERE f2.currency_id = po.currency_id AND f2.rate_date <= po.order_date)
+    """)
+
+    if not base_df.empty and base_df.iloc[0]["spend_usd"]:
+        base_total = float(base_df.iloc[0]["spend_usd"])
+        base_non_usd = float(base_df.iloc[0]["non_usd_spend"] or 0)
+
+        shock_pct = st.slider(
+            "FX shock (%)", min_value=-30, max_value=50, value=0, step=5,
+            help="Positive = devaluation (NGN weakens), Negative = appreciation"
+        )
+
+        scenarios = [
+            {"name": "Appreciation (-10%)", "shock": -10},
+            {"name": "Base (0%)", "shock": 0},
+            {"name": "Mild Devaluation (+10%)", "shock": 10},
+            {"name": "Severe Devaluation (+20%)", "shock": 20},
+            {"name": f"Custom ({shock_pct:+d}%)", "shock": shock_pct},
+        ]
+
+        rows = []
+        for s in scenarios:
+            stressed_non_usd = base_non_usd * (1 + s["shock"] / 100.0)
+            stressed_total = (base_total - base_non_usd) + stressed_non_usd
+            rows.append({
+                "Scenario": s["name"],
+                "Shock %": s["shock"],
+                "Baseline USD": base_total,
+                "Stressed USD": stressed_total,
+                "Impact USD": stressed_total - base_total,
+            })
+
+        scenario_df = pd.DataFrame(rows)
+
+        fig = px.bar(
+            scenario_df, x="Scenario", y="Impact USD",
+            color="Impact USD",
+            color_continuous_scale="RdYlGn_r",
+            labels={"Impact USD": "Landed Cost Impact (USD)"},
+        )
+        fig.add_hline(y=0, line_dash="solid", line_color="black")
+        fig.update_layout(height=420)
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.dataframe(
+            scenario_df.style.format({
+                "Baseline USD": "${:,.0f}",
+                "Stressed USD": "${:,.0f}",
+                "Impact USD": "${:,.0f}",
+            }),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    # ── Negotiation insights ─────────────────────────────────────────────────
+    st.divider()
+    st.subheader("Negotiation Insights — Top Risk Suppliers")
+
+    neg_df = run_query("""
+        SELECT s.supplier_name, spm.composite_risk_score, spm.avg_lead_time,
+               spm.avg_defect_rate, spm.cost_variance_pct, spm.fx_exposure_pct
+        FROM supplier_performance_metrics spm
+        JOIN suppliers s ON spm.supplier_id = s.supplier_id
+        ORDER BY spm.composite_risk_score DESC
+        LIMIT 10
+    """)
+
+    if not neg_df.empty:
+        for _, r in neg_df.iterrows():
+            actions = []
+            if r["avg_lead_time"] > neg_df["avg_lead_time"].median():
+                actions.append("⏱️ Add lead-time SLA penalties")
+            if r["avg_defect_rate"] > neg_df["avg_defect_rate"].median():
+                actions.append("🔍 Introduce quality rebate clause")
+            if r["cost_variance_pct"] > neg_df["cost_variance_pct"].median():
+                actions.append("📊 Lock indexed pricing corridor")
+            if r["fx_exposure_pct"] > neg_df["fx_exposure_pct"].median():
+                actions.append("💱 Shift contract currency / hedge exposure")
+            if not actions:
+                actions.append("✅ Maintain terms and monitor quarterly")
+
+            with st.expander(f"**{r['supplier_name']}** — Risk Score: {r['composite_risk_score']:.1f}"):
+                st.markdown("\n".join(f"- {a}" for a in actions))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 7 — Pipeline Runner
+# ══════════════════════════════════════════════════════════════════════════════
+
+elif page == "⚙️ Pipeline Runner":
+    st.title("⚙️ Pipeline Runner")
+    st.markdown(
+        "Run the PVIS data pipeline stages from this dashboard. "
+        "Each stage writes results to the database; the dashboard auto-refreshes."
+    )
+
+    st.warning(
+        "⚠️ Running stages will **overwrite** existing transactional data. "
+        "Use with caution in production."
+    )
+
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.subheader("Data Generation & ETL")
+        if st.button("1️⃣ Generate Sample Data", use_container_width=True):
+            with st.spinner("Generating sample data..."):
+                try:
+                    from data_ingestion.generate_sample_data import main as gen_data
+                    gen_data()
+                    st.success("Sample data generated!")
+                except Exception as e:
+                    st.error(f"Failed: {e}")
+
+        if st.button("2️⃣ Run ETL / Populate Warehouse", use_container_width=True):
+            with st.spinner("Running ETL pipeline..."):
+                try:
+                    from data_ingestion.populate_warehouse import main as run_etl
+                    run_etl()
+                    st.success("Warehouse populated!")
+                except Exception as e:
+                    st.error(f"Failed: {e}")
+
+    with col_b:
+        st.subheader("Analytics")
+        if st.button("3️⃣ Run FX Simulation", use_container_width=True):
+            with st.spinner("Running Monte Carlo simulation (10K paths)..."):
+                try:
+                    from analytics.advanced_analytics import run_fx_simulation
+                    run_fx_simulation(currency_id=1, days=90, simulations=10000)
+                    st.success("FX simulation complete!")
+                except Exception as e:
+                    st.error(f"Failed: {e}")
+
+        if st.button("4️⃣ Run Supplier Risk Scoring", use_container_width=True):
+            with st.spinner("Calculating supplier risk metrics..."):
+                try:
+                    from analytics.advanced_analytics import run_supplier_risk
+                    run_supplier_risk()
+                    st.success("Supplier risk scores updated!")
+                except Exception as e:
+                    st.error(f"Failed: {e}")
+
+    st.divider()
+
+    # ── Database health check ────────────────────────────────────────────────
+    st.subheader("Database Health Check")
+    tables = [
+        "dim_date", "dim_supplier", "dim_material", "fact_procurement",
+        "supplier_performance_metrics", "supplier_spend_summary",
+        "purchase_orders", "purchase_order_items", "fx_rates",
+        "quality_incidents", "financial_kpis",
+    ]
+    health_rows = []
+    for tbl in tables:
+        cnt_df = run_query(f"SELECT COUNT(*) AS cnt FROM {tbl}")
+        cnt = int(cnt_df.iloc[0]["cnt"]) if not cnt_df.empty else 0
+        health_rows.append({"Table": tbl, "Row Count": cnt, "Status": "✅" if cnt > 0 else "❌ EMPTY"})
+    st.dataframe(pd.DataFrame(health_rows), use_container_width=True, hide_index=True)
