@@ -1,330 +1,587 @@
-# Detailed Walkthrough: Building the Procurement Intelligence Project
+# PROJECT WALKTHROUGH
+## Building the Procurement Intelligence Engine — A Complete Build History
 
-This project evolved through **two distinct phases** — an initial Procurement Intelligence Engine and a specialized PVIS (Procurement Volatility Intelligence System) that grew out of it.
+**Document Date:** February 20, 2026
+**Repository:** [DavidMaco/Procurement_Intelligence_Proj1](https://github.com/DavidMaco/Procurement_Intelligence_Proj1)
+**Tech Stack:** Python 3.13 · MySQL 8.0 · Streamlit 1.54 · SQLAlchemy · NumPy · Plotly
 
 ---
 
-## Phase 1: Foundation — The Procurement Intelligence Engine
+## Table of Contents
 
-**Goal:** Build a basic procurement analytics platform with ETL, supplier intelligence, risk modeling, and a web dashboard.
+1. [Project Overview](#1-project-overview)
+2. [Phase 1 — Foundation (Scaffold & Prototyping)](#2-phase-1--foundation)
+3. [Phase 2 — Database Schema & Constraints](#3-phase-2--database-schema--constraints)
+4. [Phase 3 — Realistic Data Generation](#4-phase-3--realistic-data-generation)
+5. [Phase 4 — Star-Schema ETL Pipeline](#5-phase-4--star-schema-etl-pipeline)
+6. [Phase 5 — Advanced Analytics Engine](#6-phase-5--advanced-analytics-engine)
+7. [Phase 6 — Streamlit Executive Dashboard](#7-phase-6--streamlit-executive-dashboard)
+8. [Phase 7 — Production Hardening](#8-phase-7--production-hardening)
+9. [Phase 8 — Comprehensive Accuracy Audit](#9-phase-8--comprehensive-accuracy-audit)
+10. [Phase 9 — Final Integrity Review & Cleanup](#10-phase-9--final-integrity-review--cleanup)
+11. [Final Architecture](#11-final-architecture)
+12. [Database Schema Reference](#12-database-schema-reference)
+13. [File Manifest](#13-file-manifest)
 
-### Step 1: Database & Configuration
+---
 
-A MySQL database `pro_intel_2` was created with core transactional tables (`suppliers`, `materials`, `currencies`, `countries`, `purchase_orders`, `purchase_order_items`, `fx_rates`, `quality_incidents`, `inventory_snapshots`, `payables_summary`, `receivables_summary`) plus warehouse tables (`dim_date`, `dim_supplier`, `dim_material`, `fact_procurement`, `supplier_spend_summary`, `supplier_performance_metrics`, `financial_kpis`).
+## 1. Project Overview
 
-`config.py` holds the connection string:
+The Procurement Intelligence Engine is a production-grade data analytics system designed for manufacturing organizations to:
 
-```python
-DATABASE_URL = 'mysql+pymysql://root:Maconoelle86@localhost:3306/pro_intel_2'
+- **Monitor FX volatility** using Monte Carlo simulation (10,000 Geometric Brownian Motion paths)
+- **Score supplier risk** using a 5-factor composite model (lead time, defects, OTD, cost variance, FX exposure)
+- **Analyze procurement spend** across 8 international suppliers, 50 materials, and 5 currencies
+- **Optimize working capital** through DIO, DPO, and Cash Conversion Cycle metrics
+- **Support executive decisions** via a 7-page interactive Streamlit dashboard
+
+The project evolved through 9 distinct phases, progressing from a basic Flask prototype to a fully audited, production-ready Streamlit application.
+
+---
+
+## 2. Phase 1 — Foundation
+
+### Goal
+Scaffold a basic procurement analytics platform with ETL, supplier intelligence, risk modeling, and a web dashboard.
+
+### What Was Built
+
+**Project structure:**
+```
+procurement-intelligence-engine/
+├── data_ingestion/
+│   ├── etl_pipeline.py        # CSV-based ETL with SQLAlchemy ORM
+│   └── sample_data.csv        # Test data
+├── analytics/
+│   ├── supplier_scoring.py    # Composite supplier ranking
+│   ├── spend_analysis.py      # Spend aggregation + matplotlib charts
+│   ├── price_forecast.py      # LinearRegression price forecasting
+│   ├── risk_assessment.py     # LogisticRegression failure prediction
+│   └── market_intelligence.py # Simulated commodity price feeds
+├── automation/
+│   └── contract_analysis.py   # spaCy NLP entity extraction
+├── ui/
+│   └── app.py                 # Flask dashboard with Plotly
+├── tests/                     # unittest suite
+├── config.py                  # SQLite → MySQL connection string
+├── requirements.txt           # All deps including tensorflow, spacy, flask
+├── Dockerfile                 # Gunicorn + Flask container
+└── docker-compose.yml         # Port 5000
 ```
 
-### Step 2: ETL Pipeline (`data_ingestion/etl_pipeline.py`)
+**Key decisions:**
+- MySQL database `pro_intel_2` chosen over SQLite for production viability
+- SQLAlchemy used for ORM (Supplier and Invoice models)
+- Initial analytics used scikit-learn for ML prototyping (LogisticRegression, LinearRegression)
+- spaCy NLP used for contract entity extraction
+- Flask served as the initial web framework
+- GitHub Actions CI configured for automated testing
 
-The first ETL module used SQLAlchemy ORM models (`Supplier`, `Invoice`) to:
-
-1. **Extract** data from `sample_data.csv` (or generate synthetic rows if the file is missing)
-2. **Transform** — parse dates, fill missing ratings with a default of 3.0
-3. **Load** — upsert suppliers and append invoices to MySQL
-
-This was the "v1" ingestion approach — simple CSV-driven, suitable for prototyping.
-
-### Step 3: Analytics Modules
-
-Five analytics modules were built:
-
-| Module | File | Purpose |
-|--------|------|---------|
-| Market Intelligence | `analytics/market_intelligence.py` | Simulates commodity price fetching (e.g. copper), calculates average price/volatility/trend, and provides geopolitical risk scores by country |
-| Price Forecasting | `analytics/price_forecast.py` | Trains a `LinearRegression` model on simulated 100-month price/demand data, saves the model as a `.pkl`, and forecasts future commodity prices |
-| Risk Assessment | `analytics/risk_assessment.py` | Uses `LogisticRegression` to predict supplier failure probability based on rating, average spend, and location risk. Also includes a compliance check for EU regulations |
-| Spend Analysis | `analytics/spend_analysis.py` | Queries invoices joined with suppliers, aggregates spend by supplier and category, generates bar and pie charts |
-| Supplier Scoring | `analytics/supplier_scoring.py` | Calculates a composite supplier score from rating, average spend, invoice count, and location risk, then ranks suppliers |
-
-### Step 4: Contract Automation (`automation/contract_analysis.py`)
-
-Uses **spaCy NLP** (`en_core_web_sm`) to extract named entities (organizations, money amounts, dates) from contract text. Also detects penalty and termination clauses, and generates templated RFP responses.
-
-### Step 5: Flask Web Dashboard (`ui/app.py`)
-
-A Flask app serves an HTML dashboard with:
-
-- **Plotly** bar chart of invoice amounts over time
-- **Plotly** bar chart of top-ranked suppliers
-- Market intelligence summary (copper price trends)
-
-Accessed at `http://127.0.0.1:5000`.
-
-### Step 6: Testing (`tests/`)
-
-Three test files cover:
-
-- `tests/test_etl.py` — Tests CSV extraction and data transformation (date parsing, null filling)
-- `tests/test_analytics.py` — Tests supplier scoring on synthetic data
-- `tests/test_risk_assessment.py` — Tests risk data loading, model training, and compliance logic
-
-### Step 7: Containerization
-
-- `Dockerfile` — Python 3.11-slim image, installs pinned requirements, runs Gunicorn with 2 workers on port 5000
-- `docker-compose.yml` — Exposes port 5000, mounts project as volume
+**Artifacts produced:**
+- Initial commit pushed to GitHub (`DavidMaco/Procurement_Intelligence_Proj1`)
+- README.md, .gitignore, GitHub CI workflow
 
 ---
 
-## Phase 2: PVIS — Procurement Volatility Intelligence System
+## 3. Phase 2 — Database Schema & Constraints
 
-**Goal:** Transform the foundation into a board-grade intelligence system focused on **FX volatility, supplier risk quantification, working capital optimization, and executive reporting**.
+### Goal
+Design a comprehensive 18-table relational schema supporting both transactional operations and analytical warehousing.
 
-The PVIS codebase lives in the `pvis-publish` directory (pushed to [github.com/DavidMaco/pvis](https://github.com/DavidMaco/pvis)) and represents the production-ready evolution.
+### Schema Design
 
-### Step 8: Production Configuration (`config.py`)
+**Transactional tables (11):**
 
-The config was completely rewritten to be **environment-variable driven**:
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `countries` | Reference dimension | country_id, country_name, region |
+| `currencies` | 5 currencies (USD, EUR, NGN, GBP, CNY) | currency_id, currency_code |
+| `suppliers` | 8 international suppliers | supplier_id, supplier_name, country_id, default_currency_id, lead_time_days |
+| `materials` | 50 materials across 5 categories | material_id, material_name, category, standard_cost |
+| `purchase_orders` | ~778 POs over 3 years | po_id, supplier_id, order_date, delivery_date, currency_id, status |
+| `purchase_order_items` | ~1,952 line items | poi_id, po_id, material_id, quantity, unit_price |
+| `fx_rates` | ~4,384 daily FX rates | fx_id, currency_id, rate_date, rate_to_usd |
+| `quality_incidents` | ~106 defect events | qi_id, supplier_id, po_id, defect_rate, incident_date |
+| `inventory_snapshots` | 1,800 monthly snapshots | snapshot_date, material_id, quantity_on_hand, value |
+| `payables_summary` | 36 monthly AP summaries | period_date, total_payable, avg_days_outstanding |
+| `receivables_summary` | 36 monthly AR summaries | period_date, total_receivable, avg_days_outstanding |
 
-- `get_database_url()` — reads `PVIS_DATABASE_URL` or falls back to local dev default
-- `get_mysql_params()` — returns PyMySQL connection dict from individual env vars
-- `get_runtime_mode()` — supports `development` / `staging` / `production`
-- `validate_runtime_settings()` — **blocks production startup** if secrets aren't set or synthetic FX fallback is enabled
-- `allow_synthetic_fx_fallback()` — controls whether fake FX data is acceptable
-- `get_usd_ngn_override_rate()` — manual override for the USD/NGN rate
-- Structured logging via `logging.basicConfig()` with configurable log level
+**Warehouse tables (8):**
 
-### Step 9: Realistic Data Generation (`data_ingestion/generate_sample_data.py`)
+| Table | Purpose |
+|-------|---------|
+| `dim_date` | 1,461-row date dimension (2023–2026) |
+| `dim_supplier` | Surrogate-keyed supplier dimension |
+| `dim_material` | Surrogate-keyed material dimension |
+| `fact_procurement` | 1,952 fact rows joining PO items with FX rates |
+| `supplier_spend_summary` | Annual USD spend per supplier |
+| `supplier_performance_metrics` | Composite risk scores per supplier |
+| `financial_kpis` | DIO, DPO, CCC metrics |
+| `fx_simulation_results` | Monte Carlo simulation outputs |
 
-The biggest evolution — replaced hardcoded synthetic rates with **live market data**:
+### Constraints Migration (`database/add_constraints_migration.sql`)
 
-#### 9a. HTTP Client — `_fetch_json()`
+A 288-line SQL migration was written adding:
+- **15 foreign key constraints** (e.g., `fk_po_supplier`, `fk_poi_material`, `fk_fx_currency`)
+- **13 CHECK constraints** (e.g., `risk_index` 0–100, `quantity > 0`, `defect_rate` 0–1)
+- **7 composite indexes** for analytical query performance
+- `fx_simulation_results` table DDL
 
-An HTTP client with `User-Agent: PVIS/1.1` header and SSL context (fixes 403 errors from APIs that block bare `urlopen` calls).
+**Currency ID mapping (critical for correctness):**
 
-#### 9b. Live FX Rates — `fetch_usd_latest_rates()`
+| ID | Code | Notes |
+|----|------|-------|
+| 1 | USD | Base currency — no FX rates stored |
+| 2 | EUR | European suppliers |
+| 3 | NGN | Nigerian Naira — primary volatility target |
+| 4 | GBP | British Pound |
+| 5 | CNY | Chinese Yuan |
 
-Tries three FX API providers in order:
+---
 
-1. `open.er-api.com` (primary — has NGN)
-2. `exchangerate-api.com` (backup — has NGN)
-3. `frankfurter.app` (ECB source — EUR/GBP only, no NGN)
+## 4. Phase 3 — Realistic Data Generation
 
-#### 9c. Historical Rates — `fetch_usd_historical_rates()`
+### Goal
+Replace prototype synthetic data with 3 years of realistic procurement data including live FX rates.
 
-Pulls real historical EUR/GBP data from Frankfurter's time-series API.
+### Implementation: `data_ingestion/seed_realistic_data.py` (504 lines)
 
-#### 9d. NGN Backcast — `_build_deterministic_backcast_from_latest()`
+**Key capabilities:**
 
-Since no free API provides NGN historical data, this function:
+#### Live FX Rate Fetching
+The seed script fetches **real-time FX rates** from three APIs with cascading fallback:
 
-- Starts at 65% of the live rate (e.g. ~875 if current = 1,345)
-- Applies an **accelerating depreciation curve** (power 1.3) modeling NGN devaluation
-- Adds mild seasonality (sinusoidal) and daily noise (±0.3%)
+1. **open.er-api.com** (primary — supports all currencies including NGN)
+2. **exchangerate-api.com** (backup — supports NGN)
+3. **frankfurter.app** (ECB source — EUR/GBP only, no NGN)
+
+An HTTP client with `User-Agent: PVIS/1.1` prevents 403 blocks from APIs.
+
+#### NGN Historical Backcast
+Since no free API provides NGN historical data, the system:
+- Starts at 65% of the live spot rate
+- Applies an **accelerating depreciation curve** (power 1.3) modeling real NGN devaluation
+- Adds seasonality (sinusoidal) and daily noise (±0.3%)
 - Pins the final date exactly to the live market rate
 
-#### 9e. FX Rate Orchestrator — `generate_fx_rates()`
+#### EUR/GBP Historical Rates
+Real historical data from Frankfurter's time-series API (ECB source).
 
-1. Fetches live spot rate (confirmed: **1,345.77 NGN per 1 USD**)
-2. EUR/GBP → real Frankfurter historical data
-3. NGN → deterministic backcast from live rate
-4. Maps currency codes to IDs from the `currencies` table
-5. Writes to `fx_rates` table (~837 records for 24 months × 3 currencies)
+#### Supplier Ecosystem
 
-#### 9f. Other Generators
+| Supplier | Country | Currency | OTD Probability |
+|----------|---------|----------|----------------|
+| Houston Petrochem Inc | USA | USD | 98% |
+| Bavaria Chem GmbH | Germany | EUR | 90% |
+| Lagos Polymers Ltd | Nigeria | NGN | 80% |
+| Yorkshire Compounds Ltd | UK | GBP | 92% |
+| Shenzhen Industrial Co | China | CNY | 82% |
+| Mumbai Steel & Alloys | India | USD | 85% |
+| São Paulo Resinas SA | Brazil | USD | 80% |
+| Johannesburg Mining Corp | S. Africa | USD | 92% |
 
-Remain similar to Phase 1 but use FK-safe `DELETE` instead of `REPLACE`:
+Each supplier has a calibrated on-time delivery probability controlling whether `delivery_date ≤ order_date + lead_time_days`.
 
-- `generate_purchase_orders()` — 8-15 POs/month per supplier, 1-5 line items each
-- `generate_quality_incidents()` — 5-10% of completed deliveries get quality events
-- `generate_inventory_snapshots()` — Monthly inventory levels per material
-- `generate_financial_summaries()` — Monthly payables and receivables
-
-### Step 10: Star Schema ETL (`data_ingestion/populate_warehouse.py`)
-
-Populates the **data warehouse** from transactional tables:
-
-| Function | Target Table | Logic |
-|----------|-------------|-------|
-| `populate_dim_date()` | `dim_date` | 4-year calendar (2023-2026), date keys in YYYYMMDD format |
-| `populate_dim_material()` | `dim_material` | Maps `material_id` → surrogate `material_key` |
-| `populate_dim_supplier()` | `dim_supplier` | Joins `suppliers` ↔ `countries`, assigns surrogate keys |
-| `populate_fact_procurement()` | `fact_procurement` | Joins PO items with FX rates (closest date ≤ order date), calculates `total_usd_value = local_value / rate_to_usd` |
-| `populate_supplier_spend_summary()` | `supplier_spend_summary` | Annual USD spend per supplier using avg FX rate |
-| `populate_supplier_performance_metrics()` | `supplier_performance_metrics` | Composite risk score from lead time, defects, OTD, cost variance, FX exposure |
-| `populate_financial_kpis()` | `financial_kpis` | Calculates DIO, DPO, and CCC (Cash Conversion Cycle) |
-
-The **composite risk score** formula:
-
-```
-Risk = (0.30 × LeadTimeNorm + 0.35 × DefectNorm + 0.25 × OTDNorm + 0.10 × FXExposureNorm) × 100
-```
-
-### Step 11: Advanced Analytics (`analytics/advanced_analytics.py`)
-
-Two main capabilities:
-
-#### A) Monte Carlo FX Simulation (`run_fx_simulation`)
-
-1. Loads historical FX rates for NGN from `fx_rates`
-2. Calculates daily **log returns**: `r_t = ln(S_t / S_{t-1})`
-3. Estimates drift (μ) and volatility (σ)
-4. Runs **10,000 simulations** over 90 trading days using Geometric Brownian Motion:
-
-```
-S_{t+1} = S_t × exp(μ·dt + σ·√dt·Z)
-```
-
-where Z ~ N(0,1) and dt = 1/252
-
-5. Reports P5, P50, P95 percentiles (e.g. P5=1,338.91, P50=1,346.01, P95=1,353.23)
-6. Stores results in `fx_simulation_results` table
-
-#### B) Supplier Risk Scoring (`run_supplier_risk`)
-
-- Queries lead time stats, quality defect rates, on-time delivery %, cost variance %, and FX exposure %
-- Merges all metrics per supplier
-- Normalizes each to [0,1] and computes the 5-factor weighted composite risk score
-- Writes to `supplier_performance_metrics`
-
-### Step 12: Optimization Engine (`analytics/optimization_engine.py`)
-
-Four strategic outputs:
-
-| Function | Output Table | Purpose |
-|----------|-------------|---------|
-| `build_fx_exposure_mapping()` | `fx_exposure_mapping` | Maps each supplier's total local and USD spend with FX exposure % |
-| `build_scenario_planning()` | `scenario_planning_output` | Calculates landed cost impact under 4 FX scenarios: Base (0%), NGN Mild Deval (+10%), Severe Deval (+20%), Appreciation (-10%) |
-| `build_working_capital_restructuring()` | `working_capital_opportunities` | Reads current DIO/DPO/CCC, targets 10% DIO reduction and 10% DPO extension, calculates CCC improvement |
-| `build_negotiation_insights()` | `negotiation_insights` | Top-10 riskiest suppliers with auto-generated negotiation strategies (SLA penalties, quality rebates, indexed pricing, FX hedging) |
-
-### Step 13: Executive Visualizations (`reports/generate_pvis_visuals.py`)
-
-Generates **13 PNG charts** using matplotlib:
-
-| # | Visual | Description |
-|---|--------|-------------|
-| 1 | `risk_heatmap.png` | Normalized heatmap of all risk factors by supplier |
-| 2 | `lead_time_volatility.png` | Bar chart of lead time volatility + line for avg lead time |
-| 3 | `cost_variance_table.png` | Tabular display of cost variance % and risk scores |
-| 4 | `top10_risk_suppliers.png` | Horizontal bar chart of top 10 composite risk scores |
-| 5 | `fx_scenario_band.png` | 5th-95th percentile FX band from Monte Carlo simulation |
-| 6 | `fx_distribution.png` | Histogram of terminal FX rates with P5/P50/P95 lines |
-| 7 | `landed_cost_stress_impact.png` | Bar chart of USD impact under each FX scenario |
-| 8 | `cost_leakage_breakdown.png` | Cost leakage by material category (above-standard-cost spend) |
-| 9 | `inventory_trend.png` | Time series of total inventory value |
-| 10 | `dpo_vs_dio.png` | Dual-line chart of DPO and DIO proxies over time |
-| 11 | `ccc_trend.png` | Current vs target CCC bar chart |
-| 12 | `optimization_estimator.png` | Working capital release opportunity in USD |
-| 13 | `dashboard_blueprint.png` | Power BI executive dashboard wireframe layout |
-
-### Step 14: Executive PDF Report (`reports/generate_executive_report.py`)
-
-Assembles all visuals into a **multi-page PDF** (`Executive_Report.pdf`) using `matplotlib.backends.backend_pdf.PdfPages`:
-
-| Page | Content |
-|------|---------|
-| 1 | **Cover** — Business problem statement, PVIS mandate, 3 strategic recommendations |
-| 2 | Dashboard Blueprint |
-| 3 | Risk Heatmap |
-| 4 | Lead Time Volatility + Top 10 Risk Suppliers |
-| 5 | Cost Variance Table + Cost Leakage Breakdown |
-| 6 | FX Scenario Band + Monte Carlo Distribution |
-| 7 | Landed Cost Stress Impact |
-| 8 | Working Capital: Inventory Trend + DPO vs DIO + CCC Trend |
-| 9 | Optimization Opportunity Estimator |
-
-### Step 15: Database Integrity (`database/add_constraints_migration.sql` + `apply_constraints.py`)
-
-A comprehensive SQL migration adds:
-
-- **15 foreign key constraints** (e.g. `fk_po_supplier`, `fk_poi_material`, `fk_fx_currency`, `fk_fact_supplier`)
-- **13 CHECK constraints** (e.g. `risk_index` 0-100, `quantity > 0`, `defect_rate` 0-1, `delivery_date >= order_date`)
-- **7 composite indexes** for analytical query performance
-- **`fx_simulation_results`** table creation
-
-The Python runner (`apply_constraints.py`) reads the SQL file, splits by `;`, filters out comments, executes each statement, and gracefully skips "already exists" errors.
-
-### Step 16: End-to-End Pipeline Orchestrator (`run_pvis_pipeline.py`)
-
-A single entry point that runs the entire pipeline in order:
-
-```
-validate_runtime_settings()
-  → generate_sample_data()       ← Live FX + realistic PO/quality/inventory data
-    → run_etl()                   ← Star schema dimensions + facts
-      → run_fx_simulation()       ← 10K Monte Carlo paths, 90 days
-        → run_supplier_risk()     ← Composite risk scoring
-          → run_optimization()    ← Scenarios, working capital, negotiation
-            → generate_visuals()  ← 13 PNG charts
-              → generate_report() ← Executive PDF
-```
-
-### Step 17: Verification (`verify_setup.py`)
-
-Connects to MySQL and reports row counts for all 11 key tables, plus counts of foreign keys and indexes — a quick health check.
-
-### Step 18: Production Hardening & GitHub Release
-
-- Environment variable support for all secrets
-- `PVIS_ENV=production` mode blocks synthetic FX fallback
-- Structured logging with configurable level
-- `PRODUCTION_READINESS.md` documents remaining gaps (secrets management, CI/CD, observability, data quality gates, access control, backup/DR)
-- Tagged as **v1.0.0** and published as a [GitHub Release](https://github.com/DavidMaco/pvis/releases/tag/v1.0.0)
+#### Data Volumes Generated
+- 8 suppliers × 3 years of POs → ~778 purchase orders, ~1,952 line items
+- 4 currencies × ~3 years daily rates → ~4,384 FX records
+- ~106 quality incidents (5–10% of deliveries)
+- 50 materials × 36 months → 1,800 inventory snapshots
+- 36 months each of payables and receivables summaries
 
 ---
 
-## Architecture Summary
+## 5. Phase 4 — Star-Schema ETL Pipeline
+
+### Goal
+Build a warehouse ETL that transforms transactional data into analytical dimensions, facts, and aggregates.
+
+### Implementation: `data_ingestion/populate_warehouse.py` (477 lines)
+
+**ETL functions (executed in order):**
+
+| # | Function | Target Table | Logic |
+|---|----------|-------------|-------|
+| 1 | `populate_dim_date()` | `dim_date` | 4-year calendar (2023–2026), date_key = YYYYMMDD |
+| 2 | `populate_dim_material()` | `dim_material` | Maps material_id → surrogate material_key |
+| 3 | `populate_dim_supplier()` | `dim_supplier` | Joins `suppliers` ↔ `countries`, assigns surrogate keys |
+| 4 | `populate_fact_procurement()` | `fact_procurement` | Joins PO items with closest-date FX rate, calculates `total_usd_value = local_value / rate_to_usd` |
+| 5 | `populate_supplier_spend_summary()` | `supplier_spend_summary` | Annual USD spend per supplier using avg FX rate |
+| 6 | `populate_supplier_performance_metrics()` | `supplier_performance_metrics` | 5-factor composite risk score |
+| 7 | `populate_financial_kpis()` | `financial_kpis` | DIO, DPO, CCC from payables/receivables/inventory |
+
+**FX Rate Lookup Logic:**
+For each PO item, the ETL finds the FX rate with the closest date ≤ the order date:
+```sql
+LEFT JOIN fx_rates fr ON fr.currency_id = po.currency_id
+    AND fr.rate_date = (
+        SELECT MAX(rate_date) FROM fx_rates
+        WHERE currency_id = po.currency_id AND rate_date <= po.order_date
+    )
+```
+
+**On-Time Delivery Calculation:**
+```sql
+OTD % = COUNT(po.delivery_date <= DATE_ADD(po.order_date, INTERVAL s.lead_time_days DAY))
+        / COUNT(*)
+```
+This compares ACTUAL delivery date against the supplier's PUBLISHED `lead_time_days`, not the PO's `expected_delivery_date`.
+
+**Composite Risk Score Formula:**
+```
+Risk = (0.30 × LeadTimeNorm + 0.35 × DefectNorm + 0.25 × (1 - OTD) + 0.10 × FXExposure) × 100
+```
+Each factor normalized to [0, 1] using min-max scaling across all suppliers.
+
+**Cash Conversion Cycle:**
+```
+CCC = DIO − DPO
+```
+Where:
+- DIO = (avg_inventory / annualized_cost) × 365
+- DPO = (avg_payable / annualized_spend) × 365
+
+---
+
+## 6. Phase 5 — Advanced Analytics Engine
+
+### Goal
+Build Monte Carlo FX simulation and composite supplier risk scoring modules.
+
+### Implementation: `analytics/advanced_analytics.py` (279 lines)
+
+#### Monte Carlo FX Simulation
+
+**Method:** Geometric Brownian Motion (GBM)
+
+1. Load historical FX rates for the chosen currency from `fx_rates`
+2. Calculate daily log returns: $r_t = \ln(S_t / S_{t-1})$
+3. Estimate drift ($\mu$) and volatility ($\sigma$) from historical returns
+4. Run **10,000 simulations** over 90 trading days:
+
+$$S_{t+1} = S_t \times \exp\left(\mu \cdot dt + \sigma \cdot \sqrt{dt} \cdot Z\right)$$
+
+Where $Z \sim N(0,1)$ and $dt = 1/252$
+
+5. Extract P5, P50, P95 percentiles from terminal rates
+6. Store results in `fx_simulation_results` table
+
+**Latest results (NGN/USD):**
+- Current rate: 1,345.77
+- P5 (bear case): 1,338.91
+- P50 (median): 1,346.01
+- P95 (bull case): 1,353.23
+
+#### Supplier Risk Scoring
+
+Queries live transactional data and computes:
+- Average lead time (days) and standard deviation
+- Average defect rate from quality incidents
+- On-time delivery percentage
+- Cost variance vs. material standard cost
+- FX exposure (% of spend in non-USD currencies)
+
+Normalizes each metric to [0, 1] and applies the weighted composite formula.
+
+---
+
+## 7. Phase 6 — Streamlit Executive Dashboard
+
+### Goal
+Replace the Flask prototype with a production-grade 7-page Streamlit dashboard.
+
+### Implementation: `streamlit_app.py` (724 lines)
+
+**Page structure:**
+
+| # | Page | Key Visuals |
+|---|------|-------------|
+| 1 | **Executive Summary** | 4 KPI metrics (total POs, total spend, active suppliers, avg risk score) + monthly spend trend + risk distribution + top 5 materials |
+| 2 | **FX Volatility & Monte Carlo** | Live NGN rate from API + historical rate chart + inline 10K-path Monte Carlo simulation with fan chart and histogram |
+| 3 | **Supplier Risk Analysis** | Composite risk bar chart + detailed risk metrics table + risk score distribution histogram |
+| 4 | **Spend & Cost Analysis** | Spend by supplier (bar) + spend by category (bar) + monthly spend trend + cost leakage analysis |
+| 5 | **Working Capital** | DIO/DPO/CCC gauges + payables timeline + receivables timeline + inventory value trend |
+| 6 | **Scenario Planning** | FX impact simulator: user inputs rate change %, system calculates USD impact per supplier |
+| 7 | **Pipeline Runner** | One-click buttons to re-run seed data, ETL, and FX simulation directly from the dashboard |
+
+**Key technical decisions:**
+- `@st.cache_resource` used for database engine (connection pooling)
+- `run_query()` helper wraps all SQL in `text()` for SQLAlchemy 2.0 compliance
+- Live NGN rate fetched from `open.er-api.com` on page load
+- Monte Carlo simulation runs entirely in-process (NumPy), not from stored results
+- `DATE_FORMAT` MySQL function uses `%%` escaping for Python string safety
+- All `GROUP BY` clauses use full expressions (not aliases) for MySQL 8.0 ONLY_FULL_GROUP_BY compliance
+
+**Streamlit configuration (`.streamlit/config.toml`):**
+- Custom dark-blue theme (`#1d4f91` primary)
+- Headless mode for server deployment
+- XSRF protection enabled
+- Usage stats gathering disabled
+
+---
+
+## 8. Phase 7 — Production Hardening
+
+### Goal
+Make the system deployment-ready with proper config management, containerization, and CI.
+
+### Changes Made
+
+**`config.py` — Environment-aware configuration:**
+```python
+try:
+    db = st.secrets["database"]  # Streamlit Cloud secrets
+    DATABASE_URL = f"mysql+pymysql://{db['user']}:{db['password']}@{db['host']}:{db['port']}/{db['name']}"
+except Exception:
+    DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:***@localhost:3306/pro_intel_2")
+```
+
+**`Dockerfile` — Streamlit container:**
+```dockerfile
+FROM python:3.13-slim
+WORKDIR /app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . /app
+EXPOSE 8501
+HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
+CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+```
+
+**`docker-compose.yml` — Full stack:**
+- Streamlit app container on port 8501
+- MySQL 8.0 container with persistent volume
+- Environment variable injection for credentials
+
+**`.streamlit/secrets.toml.example`** — Template for credentials (never committed)
+
+**GitHub Actions CI** (`.github/workflows/python-app.yml`):
+- Triggers on push/PR to main
+- Python 3.13 on ubuntu-latest
+- Installs requirements.txt + pytest
+- Runs `python -m pytest tests/ -v`
+
+**GitHub release:** Tagged as v1.0.0 and published
+
+---
+
+## 9. Phase 8 — Comprehensive Accuracy Audit
+
+### Goal
+Conduct a thorough data accuracy audit to find and fix every numerical, logical, and query error.
+
+### Issues Found and Fixed (8 Critical Fixes)
+
+| # | Issue | Impact | Fix |
+|---|-------|--------|-----|
+| 1 | OTD always 100% | Useless metric | Changed OTD calc to compare actual delivery vs published `lead_time_days` |
+| 2 | DIO/DPO/CCC identity | CCC always = DIO − DPO with no real meaning | Rewrote to use actual inventory, payables, and receivables data |
+| 3 | Cost leakage label wrong | Misleading dashboard | Fixed label to accurately describe above-standard-cost analysis |
+| 4 | `fx_simulation_results` stale data | Old rows polluting results | Added cleanup before each simulation run |
+| 5 | Currency_id=1 default for FX sim | Simulating USD (base currency) instead of NGN | Changed default to `currency_id=3` (NGN) |
+| 6 | `DATE_FORMAT` escaping | Python `%M` interpreted as format specifier | Used `%%M`, `%%Y` etc. for MySQL compatibility |
+| 7 | `GROUP BY` alias error | MySQL ONLY_FULL_GROUP_BY rejection | Changed to GROUP BY full expressions |
+| 8 | Live NGN rate not displayed | Dashboard showed stale rate | Added API call to `open.er-api.com` on FX page load |
+
+### Verification
+After fixes, all 6 dashboard queries were re-run against the database:
+- Executive KPIs: 778 POs, $79.6M spend, 8 suppliers, 28.2 avg risk
+- All 8 suppliers showing realistic risk scores (3.7 to 47.4)
+- OTD ranging from 79.8% (São Paulo) to 98.9% (Houston) — realistic variation
+- CCC: −4.62 days (strong working capital position)
+- Zero FK orphans across all tables
+
+---
+
+## 10. Phase 9 — Final Integrity Review & Cleanup
+
+### Goal
+Three recursive reviews ensuring zero errors, followed by project synchronization.
+
+### Review 1: Full Code Audit
+Read every file in the project. Identified:
+- **15+ stale legacy files** from Phase 1 (Flask app, old analytics stubs, spaCy/sklearn modules, old ETL, sample CSV, pinned-requirements, etc.)
+- **7 config files** needing updates (Dockerfile, docker-compose, requirements, .gitignore, pytest.ini, CI workflow, README)
+- **1 code bug** (misleading default `currency_id=1` in `run_fx_simulation`)
+
+### Review 2: Data & Query Integrity
+- Verified all 19 table row counts
+- Ran all 6 key dashboard queries — all returned valid data
+- Confirmed zero FK orphans (purchase_orders → suppliers, fact_procurement → dimensions)
+- Validated `financial_kpis` column names match dashboard queries
+
+### Review 3: Runtime Verification
+- All Python files compile without syntax errors
+- All imports resolve (streamlit, pandas, numpy, plotly, sqlalchemy, requests, pymysql)
+- Advanced analytics module imports correctly
+- Streamlit config.toml CORS/XSRF conflict resolved
+
+### Cleanup Actions
+
+**Files deleted (25+):**
+- `app.py` (Flask entry point)
+- `ui/app.py` + `ui/__pycache__/` (Flask dashboard)
+- `analytics/supplier_scoring.py`, `spend_analysis.py`, `market_intelligence.py`, `price_forecast.py`, `risk_assessment.py` (old stubs)
+- `analytics/risk_model.pkl` (stale model)
+- `automation/contract_analysis.py` (spaCy stub)
+- `data_ingestion/etl_pipeline.py`, `generate_sample_data.py`, `sample_data.csv` (superseded)
+- `pinned-requirements.txt` (164-line Flask-era file)
+- `tests/test_hello.py`, `test_analytics.py`, `test_etl.py`, `test_risk_assessment.py` (tested stale modules)
+- `IMPLEMENTATION_SUMMARY.md`, `QUICK_START.md`, `SETUP_GUIDE.md`, `PROJECT_WALKTHROUGH.md` (outdated docs)
+- `settings.json`, `pytest.log`, `procurement.db`, `pro-intel-2-analytics/` (junk files)
+
+**Files updated (8):**
+- `Dockerfile` → Streamlit container (was Flask/Gunicorn)
+- `docker-compose.yml` → Port 8501 + MySQL service (was port 5000)
+- `requirements.txt` → 8 deps (was 15 including tensorflow, spacy, flask)
+- `.gitignore` → Added `.pytest_cache/`, `*.pkl`, `settings.json`, `.venv/`
+- `pytest.ini` → Removed log file output
+- `.github/workflows/python-app.yml` → Python 3.13 + pytest (was 3.11 + unittest)
+- `.streamlit/config.toml` → Fixed CORS/XSRF conflict
+- `analytics/advanced_analytics.py` → Default `currency_id=3` (NGN)
+
+**New files created (5):**
+- `tests/conftest.py` — Shared pytest fixtures
+- `tests/test_config.py` — Config module tests
+- `tests/test_advanced_analytics.py` — Analytics module tests
+- `tests/test_data_ingestion.py` — ETL module tests
+- `tests/test_integration.py` — Database connectivity and table integrity tests
+- This `PROJECT_WALKTHROUGH.md`
+
+**Test results:** 12/12 tests passing
+
+---
+
+## 11. Final Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     LIVE FX APIS                            │
+│                     LIVE FX APIs                            │
 │   open.er-api.com → exchangerate-api.com → frankfurter.app │
 └────────────────────────────┬────────────────────────────────┘
                              │
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│              DATA GENERATION (generate_sample_data.py)      │
-│   FX Rates (live NGN + historical EUR/GBP)                  │
-│   Purchase Orders → Line Items → Quality Incidents          │
-│   Inventory Snapshots → Payables/Receivables                │
+┌────────────────────────────▼────────────────────────────────┐
+│      DATA GENERATION  (data_ingestion/seed_realistic_data.py)│
+│  • Fetches live NGN/EUR/GBP/CNY rates                       │
+│  • Backcasts 3 years of NGN with depreciation curve         │
+│  • Generates 778 POs, 1952 items, 106 quality incidents     │
+│  • Creates inventory snapshots + financial summaries         │
 └────────────────────────────┬────────────────────────────────┘
                              │
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│              ETL WAREHOUSE (populate_warehouse.py)           │
-│   dim_date | dim_supplier | dim_material                    │
-│   fact_procurement | supplier_spend_summary                  │
-│   supplier_performance_metrics | financial_kpis              │
+┌────────────────────────────▼────────────────────────────────┐
+│      STAR-SCHEMA ETL  (data_ingestion/populate_warehouse.py) │
+│  • dim_date (1,461) · dim_supplier (8) · dim_material (50)  │
+│  • fact_procurement (1,952) with FX-converted USD values     │
+│  • Composite risk scoring (5 weighted factors)               │
+│  • Financial KPIs: DIO, DPO, CCC                            │
 └────────────────────────────┬────────────────────────────────┘
                              │
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│              ANALYTICS ENGINE                                │
-│   Monte Carlo FX Simulation (10K paths × 90 days)           │
-│   Composite Supplier Risk Scoring (5 factors)                │
-│   FX Exposure Mapping | Scenario Planning                    │
-│   Working Capital Restructuring | Negotiation Insights       │
+┌────────────────────────────▼────────────────────────────────┐
+│      ANALYTICS  (analytics/advanced_analytics.py)            │
+│  • Monte Carlo: 10K GBM paths × 90 trading days             │
+│  • Reports P5/P50/P95 percentiles                            │
+│  • Stores results in fx_simulation_results                   │
 └────────────────────────────┬────────────────────────────────┘
                              │
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│              REPORTING                                       │
-│   13 Executive Visuals (matplotlib → PNG)                    │
-│   Multi-page Executive PDF (PdfPages)                        │
-│   Power BI Dashboard Blueprint                               │
+┌────────────────────────────▼────────────────────────────────┐
+│      STREAMLIT DASHBOARD  (streamlit_app.py)                 │
+│  Page 1: Executive Summary (KPIs, trends, top materials)     │
+│  Page 2: FX Volatility & Monte Carlo (live rate, sim)        │
+│  Page 3: Supplier Risk Analysis (scores, metrics)            │
+│  Page 4: Spend & Cost Analysis (by supplier/category)        │
+│  Page 5: Working Capital (DIO/DPO/CCC, timelines)           │
+│  Page 6: Scenario Planning (FX impact calculator)            │
+│  Page 7: Pipeline Runner (re-run seed/ETL/analytics)         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Tech Stack
+---
 
-| Layer | Technology |
-|-------|-----------|
-| Database | MySQL 8 (`pro_intel_2`) |
-| ORM/Connection | SQLAlchemy + PyMySQL |
-| Data Processing | pandas, NumPy |
-| Simulation | NumPy (Geometric Brownian Motion) |
-| ML (Phase 1) | scikit-learn (LogisticRegression, LinearRegression) |
-| NLP (Phase 1) | spaCy |
-| Visualization | matplotlib |
-| Web (Phase 1) | Flask + Plotly |
-| FX Data | open.er-api.com, exchangerate-api.com, Frankfurter (ECB) |
-| Deployment | Docker, GitHub Actions |
-| Version Control | Git → GitHub (`DavidMaco/pvis`) |
+## 12. Database Schema Reference
+
+### Currency Mapping
+| currency_id | currency_code | Used By |
+|-------------|--------------|---------|
+| 1 | USD | Houston Petrochem, Mumbai Steel, São Paulo Resinas, Johannesburg Mining |
+| 2 | EUR | Bavaria Chem GmbH |
+| 3 | NGN | Lagos Polymers Ltd |
+| 4 | GBP | Yorkshire Compounds Ltd |
+| 5 | CNY | Shenzhen Industrial Co |
+
+### Table Row Counts (as of Feb 20, 2026)
+| Table | Rows |
+|-------|------|
+| countries | 8 |
+| currencies | 5 |
+| suppliers | 8 |
+| materials | 50 |
+| purchase_orders | 778 |
+| purchase_order_items | 1,952 |
+| fx_rates | 4,384 |
+| quality_incidents | 106 |
+| inventory_snapshots | 1,800 |
+| payables_summary | 36 |
+| receivables_summary | 36 |
+| dim_date | 1,461 |
+| dim_supplier | 8 |
+| dim_material | 50 |
+| fact_procurement | 1,952 |
+| supplier_spend_summary | 24 |
+| supplier_performance_metrics | 8 |
+| financial_kpis | 1 |
+| fx_simulation_results | 9 |
 
 ---
 
-*Document generated: February 20, 2026*
+## 13. File Manifest
+
+### Final Project Structure (after cleanup)
+```
+procurement-intelligence-engine/
+├── .github/
+│   ├── copilot-instructions.md
+│   └── workflows/
+│       └── python-app.yml            # CI: Python 3.13, pytest
+├── .streamlit/
+│   ├── config.toml                   # Theme + server settings
+│   ├── secrets.toml                  # (gitignored) Real credentials
+│   └── secrets.toml.example          # Template for credentials
+├── analytics/
+│   └── advanced_analytics.py         # Monte Carlo FX + risk scoring (279 lines)
+├── database/
+│   └── add_constraints_migration.sql # FK + CHECK constraints (288 lines)
+├── data_ingestion/
+│   ├── seed_realistic_data.py        # Live FX + realistic data gen (504 lines)
+│   └── populate_warehouse.py         # Star-schema ETL (477 lines)
+├── tests/
+│   ├── conftest.py                   # Shared fixtures
+│   ├── test_advanced_analytics.py    # Analytics unit tests
+│   ├── test_config.py               # Config module tests
+│   ├── test_data_ingestion.py        # ETL module tests
+│   └── test_integration.py          # DB connectivity + table tests
+├── .gitignore
+├── config.py                         # DB connection (20 lines)
+├── docker-compose.yml                # Streamlit + MySQL stack
+├── Dockerfile                        # Streamlit container
+├── PROJECT_WALKTHROUGH.md            # This document
+├── pytest.ini                        # pytest configuration
+├── README.md                         # Quick-start guide
+├── requirements.txt                  # 8 Python dependencies
+└── streamlit_app.py                  # 7-page executive dashboard (724 lines)
+```
+
+### Dependencies (`requirements.txt`)
+```
+pandas          # Data manipulation
+numpy           # Numerical computation + Monte Carlo
+sqlalchemy      # Database ORM
+pymysql         # MySQL driver
+cryptography    # SSL for DB connections
+streamlit       # Dashboard framework
+plotly          # Interactive charts
+requests        # Live FX API calls
+```
+
+---
+
+*End of walkthrough. Generated February 20, 2026.*

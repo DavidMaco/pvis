@@ -20,14 +20,14 @@ engine = create_engine(
 # 2. FX MONTE CARLO MODULE
 # =========================
 
-def run_fx_simulation(currency_id=1, days=90, simulations=10000):
+def run_fx_simulation(currency_id=3, days=90, simulations=10000):
     """
     Run Monte Carlo simulation for FX rate forecasting.
     
     Parameters:
     -----------
     currency_id : int
-        Currency to simulate (default 1 for NGN)
+        Currency to simulate (default 3 for NGN)
     days : int
         Forecast horizon in days
     simulations : int

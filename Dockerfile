@@ -1,9 +1,9 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 WORKDIR /app
-COPY pinned-requirements.txt ./
-RUN pip install --no-cache-dir -r pinned-requirements.txt
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app
-ENV FLASK_APP=app.py
-ENV FLASK_ENV=production
-EXPOSE 5000
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--workers", "2"]
+ENV PYTHONUNBUFFERED=1
+EXPOSE 8501
+HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
+CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]

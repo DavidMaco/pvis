@@ -1,15 +1,8 @@
 pandas
 numpy
-scikit-learn
-tensorflow
 sqlalchemy
 pymysql
 cryptography
-psycopg2-binary
-flask
 streamlit
 plotly
-spacy
 requests
-joblib
-matplotlib
