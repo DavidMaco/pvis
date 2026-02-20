@@ -1,6 +1,27 @@
 """Tests for streamlit_app.py — verifies the app can be imported and key functions exist."""
 
+import os
 import pytest
+
+# ── Helper: detect whether MySQL is reachable ────────────────────────────────
+
+def _mysql_available() -> bool:
+    """Return True only if MySQL is actually accepting connections."""
+    try:
+        from sqlalchemy import create_engine, text
+        from config import DATABASE_URL
+        engine = create_engine(DATABASE_URL, connect_args={"connect_timeout": 3})
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
+
+
+_skip_no_db = pytest.mark.skipif(
+    not _mysql_available(),
+    reason="MySQL is not reachable (CI or no local server)",
+)
 
 
 def test_streamlit_app_compiles():
@@ -9,6 +30,7 @@ def test_streamlit_app_compiles():
     py_compile.compile("streamlit_app.py", doraise=True)
 
 
+@_skip_no_db
 def test_database_connectivity():
     """Database should be reachable and return data."""
     from sqlalchemy import create_engine, text
@@ -20,6 +42,7 @@ def test_database_connectivity():
         assert result == 1
 
 
+@_skip_no_db
 def test_core_tables_populated():
     """All core transactional and warehouse tables should have data."""
     from sqlalchemy import create_engine, text

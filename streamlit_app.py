@@ -49,26 +49,50 @@ def run_query(query: str, params=None) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=3600)  # refresh every hour
-def _fetch_live_ngn_rate() -> float:
+@st.cache_data(ttl=300)  # refresh every 5 minutes
+def _fetch_live_rates() -> dict:
     """
-    Fetch the real-time NGN/USD exchange rate from a free public API.
-    Falls back to the latest rate stored in the database if the API is
-    unreachable or returns an error.
+    Fetch ALL live USD-base exchange rates from a free public API.
+    Returns a dict like {"NGN": 1345.77, "EUR": 0.92, "GBP": 0.79, ...}.
+    Returns an empty dict if every API is unreachable.
     """
-    # Primary: exchangerate.host (no key required)
     apis = [
-        ("https://open.er-api.com/v6/latest/USD", lambda j: float(j["rates"]["NGN"])),
-        ("https://api.frankfurter.dev/v1/latest?base=USD&symbols=NGN", lambda j: float(j["rates"]["NGN"])),
+        # Primary: open.er-api.com — supports 150+ currencies including NGN
+        ("https://open.er-api.com/v6/latest/USD", lambda j: j.get("rates", {})),
+        # Backup: frankfurter.dev (ECB source) — no NGN, but good for EUR/GBP/CNY
+        ("https://api.frankfurter.dev/v1/latest?base=USD", lambda j: j.get("rates", {})),
     ]
     for url, parser in apis:
         try:
-            resp = requests.get(url, timeout=5)
+            resp = requests.get(url, timeout=8)
             if resp.ok:
-                return parser(resp.json())
+                rates = parser(resp.json())
+                if isinstance(rates, dict) and len(rates) > 0:
+                    return rates
         except Exception:
             continue
+    return {}
 
+
+def _fetch_live_rate(currency_code: str) -> float | None:
+    """
+    Get the live exchange rate (units per 1 USD) for a specific currency.
+    Returns None only if all public APIs are unreachable.
+    """
+    rates = _fetch_live_rates()
+    code = currency_code.upper()
+    if code == "USD":
+        return 1.0
+    return float(rates[code]) if code in rates else None
+
+
+def _fetch_live_ngn_rate() -> float:
+    """
+    Convenience wrapper: live NGN/USD rate with DB fallback.
+    """
+    rate = _fetch_live_rate("NGN")
+    if rate is not None:
+        return rate
     # Fallback: latest rate from seed data
     df = run_query("""
         SELECT fx.rate_to_usd
@@ -257,8 +281,46 @@ elif page == "📈 FX Volatility & Monte Carlo":
         st.warning(f"No FX data for {chosen_code}.")
         st.stop()
 
+    # ── Live rate enrichment ─────────────────────────────────────────────────
+    # Always anchor to the real-time API rate so charts and simulations
+    # reflect the actual current market, not stale seed/backcast data.
+    live_rate = _fetch_live_rate(chosen_code)
+    db_latest = float(hist_df["rate_to_usd"].iloc[-1])
+
+    if live_rate is not None:
+        # Append today's live rate to the series so the chart ends at reality
+        today_row = pd.DataFrame(
+            [{"rate_date": pd.Timestamp.today().normalize(), "rate_to_usd": live_rate}]
+        )
+        hist_df = pd.concat([hist_df, today_row], ignore_index=True)
+        hist_df = hist_df.drop_duplicates(subset="rate_date", keep="last")
+        hist_df = hist_df.sort_values("rate_date").reset_index(drop=True)
+        current_rate_source = "live API"
+        current_rate = live_rate
+    else:
+        current_rate_source = "latest DB record"
+        current_rate = db_latest
+
+    # Show live vs DB comparison
+    if live_rate is not None and abs(live_rate - db_latest) / max(db_latest, 1) > 0.05:
+        st.info(
+            f"**Live rate ({chosen_code}/USD):** {live_rate:,.4f}  —  "
+            f"DB latest: {db_latest:,.4f}  "
+            f"(divergence: {((live_rate - db_latest) / db_latest) * 100:+.1f}%). "
+            f"Monte Carlo simulation uses the **live rate** as starting point."
+        )
+
     st.subheader(f"Historical {chosen_code}/USD Rate")
     fig_hist = px.line(hist_df, x="rate_date", y="rate_to_usd", labels={"rate_to_usd": f"{chosen_code} per 1 USD"})
+    # Mark the live rate point
+    if live_rate is not None:
+        fig_hist.add_scatter(
+            x=[hist_df["rate_date"].iloc[-1]],
+            y=[live_rate],
+            mode="markers",
+            marker=dict(size=10, color="red", symbol="diamond"),
+            name="Live Rate",
+        )
     fig_hist.update_layout(height=350)
     st.plotly_chart(fig_hist, use_container_width=True)
 
@@ -268,7 +330,7 @@ elif page == "📈 FX Volatility & Monte Carlo":
         hist_df = hist_df.dropna()
         mu = hist_df["log_return"].mean()
         sigma = hist_df["log_return"].std()
-        current_rate = float(hist_df["rate_to_usd"].iloc[-1])
+        # current_rate already set above from live API (preferred) or DB
 
         dt = 1 / 252
         np.random.seed(42)
@@ -286,7 +348,7 @@ elif page == "📈 FX Volatility & Monte Carlo":
 
         # Summary metrics
         mcol1, mcol2, mcol3, mcol4 = st.columns(4)
-        mcol1.metric("Current Rate", f"{current_rate:,.4f}")
+        mcol1.metric(f"Current Rate ({current_rate_source})", f"{current_rate:,.4f}")
         mcol2.metric("P5 (worst)", f"{p5[-1]:,.4f}")
         mcol3.metric("P50 (median)", f"{p50[-1]:,.4f}")
         mcol4.metric("P95 (best)", f"{p95[-1]:,.4f}")
