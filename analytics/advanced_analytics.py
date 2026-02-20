@@ -151,14 +151,15 @@ def run_supplier_risk():
 
     quality_df = pd.read_sql(quality_query, engine)
 
-    # On-time delivery
+    # On-time delivery (actual lead time vs supplier's published lead time)
     otd_query = """
     SELECT 
-        supplier_id,
-        (SUM(CASE WHEN delivery_date <= payment_due_date THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as on_time_delivery_pct
-    FROM purchase_orders
-    WHERE delivery_date IS NOT NULL AND payment_due_date IS NOT NULL
-    GROUP BY supplier_id
+        po.supplier_id,
+        (SUM(CASE WHEN DATEDIFF(po.delivery_date, po.order_date) <= s.lead_time_days THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as on_time_delivery_pct
+    FROM purchase_orders po
+    JOIN suppliers s ON po.supplier_id = s.supplier_id
+    WHERE po.delivery_date IS NOT NULL AND po.order_date IS NOT NULL
+    GROUP BY po.supplier_id
     """
 
     otd_df = pd.read_sql(otd_query, engine)

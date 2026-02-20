@@ -197,10 +197,15 @@ if page == "🏠 Executive Summary":
 elif page == "📈 FX Volatility & Monte Carlo":
     st.title("📈 FX Volatility & Monte Carlo Forecast")
 
-    # Currency selector
-    currencies_df = run_query("SELECT currency_id, currency_code FROM currencies")
+    # Currency selector – only currencies that have FX rate history
+    currencies_df = run_query("""
+        SELECT DISTINCT c.currency_id, c.currency_code
+        FROM currencies c
+        JOIN fx_rates f ON c.currency_id = f.currency_id
+        ORDER BY c.currency_code
+    """)
     if currencies_df.empty:
-        st.warning("No currencies found in database.")
+        st.warning("No currencies with FX rate data found.")
         st.stop()
 
     currency_options = {
@@ -409,18 +414,18 @@ elif page == "💰 Spend & Cost Analysis":
     st.subheader("Cost Leakage by Category")
     leak_df = run_query("""
         SELECT m.category,
-               SUM((poi.unit_price - m.standard_cost) * poi.quantity) AS leakage_local
+               SUM((poi.unit_price - m.standard_cost) * poi.quantity) AS leakage_usd
         FROM purchase_order_items poi
         JOIN materials m ON poi.material_id = m.material_id
         WHERE poi.unit_price > m.standard_cost
         GROUP BY m.category
-        ORDER BY leakage_local DESC
+        ORDER BY leakage_usd DESC
     """)
     if not leak_df.empty:
         fig = px.bar(
-            leak_df, x="category", y="leakage_local",
-            color="leakage_local", color_continuous_scale="Reds",
-            labels={"leakage_local": "Leakage (Local Currency)", "category": "Category"},
+            leak_df, x="category", y="leakage_usd",
+            color="leakage_usd", color_continuous_scale="Reds",
+            labels={"leakage_usd": "Leakage (USD)", "category": "Category"},
         )
         fig.update_layout(height=400)
         st.plotly_chart(fig, use_container_width=True)
@@ -640,7 +645,7 @@ elif page == "⚙️ Pipeline Runner":
         if st.button("1️⃣ Generate Sample Data", use_container_width=True):
             with st.spinner("Generating sample data..."):
                 try:
-                    from data_ingestion.generate_sample_data import main as gen_data
+                    from data_ingestion.seed_realistic_data import main as gen_data
                     gen_data()
                     st.success("Sample data generated!")
                 except Exception as e:
@@ -661,7 +666,7 @@ elif page == "⚙️ Pipeline Runner":
             with st.spinner("Running Monte Carlo simulation (10K paths)..."):
                 try:
                     from analytics.advanced_analytics import run_fx_simulation
-                    run_fx_simulation(currency_id=1, days=90, simulations=10000)
+                    run_fx_simulation(currency_id=3, days=90, simulations=10000)
                     st.success("FX simulation complete!")
                 except Exception as e:
                     st.error(f"Failed: {e}")

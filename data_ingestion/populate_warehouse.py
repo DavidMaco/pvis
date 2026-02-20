@@ -265,14 +265,15 @@ def populate_supplier_performance_metrics():
     
     quality_df = pd.read_sql(quality_query, engine)
     
-    # Get on-time delivery percentage
+    # Get on-time delivery percentage (actual lead time vs supplier's published lead time)
     otd_query = """
     SELECT 
-        supplier_id,
-        (SUM(CASE WHEN delivery_date <= payment_due_date THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as on_time_delivery_pct
-    FROM purchase_orders
-    WHERE delivery_date IS NOT NULL
-    GROUP BY supplier_id
+        po.supplier_id,
+        (SUM(CASE WHEN DATEDIFF(po.delivery_date, po.order_date) <= s.lead_time_days THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as on_time_delivery_pct
+    FROM purchase_orders po
+    JOIN suppliers s ON po.supplier_id = s.supplier_id
+    WHERE po.delivery_date IS NOT NULL
+    GROUP BY po.supplier_id
     """
     
     otd_df = pd.read_sql(otd_query, engine)
@@ -357,60 +358,69 @@ def populate_supplier_performance_metrics():
 
 def populate_financial_kpis():
     """
-    Calculate and populate financial KPIs (DIO, DPO, CCC).
+    Calculate and populate financial KPIs (DIO, DPO, DSO, CCC).
+    Uses annualized procurement spend as the cost-of-goods proxy.
     """
     print("Populating financial_kpis...")
-    
-    # Get inventory data
-    inv_query = """
-    SELECT 
-        snapshot_date,
-        AVG(inventory_value_usd) as avg_inventory_value
-    FROM inventory_snapshots
-    GROUP BY snapshot_date
-    ORDER BY snapshot_date DESC
-    LIMIT 1
-    """
-    
-    inv_df = pd.read_sql(inv_query, engine)
-    
-    if inv_df.empty:
-        print("  ⚠ No inventory data available, skipping financial KPIs")
+
+    # Annualized total procurement spend (used as COGS proxy)
+    spend_query = "SELECT SUM(total_usd_value) AS total FROM fact_procurement"
+    spend_df = pd.read_sql(spend_query, engine)
+    total_spend = float(spend_df.iloc[0]["total"] or 0) if not spend_df.empty else 0
+
+    if total_spend == 0:
+        print("  ⚠ No procurement spend, skipping financial KPIs")
         return
-    
-    # Get payables and receivables
+
+    # Data covers 3 years → annualise
+    annual_spend = total_spend / 3.0
+
+    # Average inventory value (latest month)
+    inv_query = """
+    SELECT AVG(inventory_value_usd) AS avg_inv
+    FROM inventory_snapshots
+    WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM inventory_snapshots)
+    """
+    inv_df = pd.read_sql(inv_query, engine)
+    avg_inventory = float(inv_df.iloc[0]["avg_inv"] or 0) if not inv_df.empty else 0
+
+    # Latest payables & receivables
     payables_query = "SELECT accounts_payable_usd FROM payables_summary ORDER BY summary_date DESC LIMIT 1"
     receivables_query = "SELECT accounts_receivable_usd FROM receivables_summary ORDER BY summary_date DESC LIMIT 1"
-    
+
     try:
-        payables = pd.read_sql(payables_query, engine).iloc[0, 0] if not pd.read_sql(payables_query, engine).empty else 0
-        receivables = pd.read_sql(receivables_query, engine).iloc[0, 0] if not pd.read_sql(receivables_query, engine).empty else 0
-    except:
-        payables, receivables = 0, 0
-    
-    # Simplified KPI calculation
-    avg_inventory = inv_df.iloc[0, 1] if not inv_df.empty else 0
-    
-    # Calculate KPIs (using approximations)
-    dio = (avg_inventory / 365) * 365 if avg_inventory > 0 else 0  # Days Inventory Outstanding
-    dpo = (payables / 365) * 365 if payables > 0 else 0  # Days Payable Outstanding
-    ccc = dio - dpo  # Cash Conversion Cycle
-    
+        pay_df = pd.read_sql(payables_query, engine)
+        payables = float(pay_df.iloc[0, 0]) if not pay_df.empty else 0
+    except Exception:
+        payables = 0
+
+    try:
+        rec_df = pd.read_sql(receivables_query, engine)
+        receivables = float(rec_df.iloc[0, 0]) if not rec_df.empty else 0
+    except Exception:
+        receivables = 0
+
+    # KPI calculations (all in *days*)
+    dio = (avg_inventory / annual_spend) * 365 if annual_spend > 0 else 0
+    dpo = (payables / annual_spend) * 365 if annual_spend > 0 else 0
+    dso = (receivables / annual_spend) * 365 if annual_spend > 0 else 0
+    ccc = dio + dso - dpo  # Cash Conversion Cycle
+
     kpi_data = pd.DataFrame({
         'kpi_date': [datetime.now().date()],
         'dio': [round(dio, 2)],
         'dpo': [round(dpo, 2)],
         'ccc': [round(ccc, 2)]
     })
-    
+
     # Clear existing data
     with engine.connect() as conn:
         conn.execute(text("DELETE FROM financial_kpis"))
         conn.commit()
-    
+
     # Insert KPI data
     kpi_data.to_sql('financial_kpis', engine, if_exists='append', index=False)
-    print(f"  ✓ Inserted financial KPI record")
+    print(f"  ✓ DIO={dio:.1f}d  DPO={dpo:.1f}d  CCC={ccc:.1f}d")
 
 
 def main():

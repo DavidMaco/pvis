@@ -83,6 +83,18 @@ SUPPLIERS = [
     (8, "Johannesburg Mining Corp",  8, 1, 0.45, 22),
 ]
 
+# Per-supplier probability of on-time delivery (inversely correlated with risk)
+SUPPLIER_OTD_PROB = {
+    1: 0.78,   # Lagos  – higher risk → lower OTD
+    2: 0.94,   # Bavaria – low risk → high OTD
+    3: 0.82,   # Shenzhen – moderate risk
+    4: 0.86,   # Mumbai – moderate
+    5: 0.96,   # Houston – lowest risk → highest OTD
+    6: 0.92,   # Yorkshire – low-moderate risk
+    7: 0.80,   # São Paulo – higher risk
+    8: 0.88,   # Johannesburg – moderate
+}
+
 MATERIAL_CATEGORIES = {
     "Polymers": [
         "PET Resin", "HDPE Granules", "LDPE Film Grade", "Polypropylene Homo",
@@ -240,6 +252,15 @@ def _generate_purchase_orders(materials):
                 continue
 
             lead = max(5, int(sup[5]) + random.randint(-5, 10))
+            # Realistic OTD: on-time deliveries stay within lead_time_days,
+            # late ones exceed it.
+            otd_prob = SUPPLIER_OTD_PROB.get(sid, 0.85)
+            if random.random() < otd_prob:
+                # On-time: actual lead ≤ supplier's published lead_time_days
+                lead = max(3, int(sup[5]) + random.randint(-5, 0))
+            else:
+                # Late: actual lead exceeds published lead_time_days
+                lead = int(sup[5]) + random.randint(3, 15)
             delivery_date = order_date + timedelta(days=lead)
             pay_terms = random.choice([30, 45, 60, 90])
             payment_due = delivery_date + timedelta(days=pay_terms)
@@ -395,6 +416,17 @@ def main():
     print("\n[1/7] Seeding reference tables …")
     with engine.connect() as conn:
         conn.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+
+        # Clear stale derivative / analytics tables from previous runs
+        for stale_tbl in [
+            "fx_exposure_mapping", "negotiation_insights",
+            "scenario_planning_output", "supplier_performance_metrics",
+            "financial_kpis",
+        ]:
+            try:
+                conn.execute(text(f"DELETE FROM {stale_tbl}"))
+            except Exception:
+                pass  # table may not exist yet
 
         conn.execute(text("DELETE FROM countries"))
         for cid, name in COUNTRIES:
