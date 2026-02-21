@@ -55,7 +55,7 @@ def test_core_tables_populated():
         "suppliers": 8,
         "materials": 50,
         "purchase_orders": 700,
-        "fx_rates": 4000,
+        "fx_rates": 3200,  # 820 business days × 4 currencies (realistic market data)
         "dim_date": 1400,
         "dim_supplier": 8,
         "fact_procurement": 1900,
