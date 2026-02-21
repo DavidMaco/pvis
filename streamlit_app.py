@@ -162,6 +162,7 @@ with st.sidebar:
             "💰 Spend & Cost Analysis",
             "🏦 Working Capital",
             "🔄 Scenario Planning",
+            "📂 Company Data Upload",
             "⚙️ Pipeline Runner",
         ],
         index=0,
@@ -769,7 +770,235 @@ elif page == "🔄 Scenario Planning":
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE 7 — Pipeline Runner
+# PAGE 7 — Company Data Upload
+# ══════════════════════════════════════════════════════════════════════════════
+
+elif page == "📂 Company Data Upload":
+    st.title("📂 Company Data Upload")
+    st.markdown(
+        "Upload your company's procurement data to run the full PVIS analytics "
+        "pipeline on **your own data** instead of the generated seed data."
+    )
+
+    if DEMO_MODE:
+        st.warning(
+            "⚠️ **Database required** — Uploading and processing company data "
+            "needs a live MySQL connection. Configure `[database]` in Streamlit "
+            "secrets to enable this feature. In demo mode, you can preview file "
+            "validation but data won't be imported."
+        )
+
+    # ── Upload method selector ───────────────────────────────────────────────
+    upload_method = st.radio(
+        "Upload method",
+        ["📄 Individual CSV files", "📦 ZIP archive (all CSVs in one file)"],
+        horizontal=True,
+    )
+
+    st.divider()
+
+    REQUIRED_FILES = {
+        "suppliers": {
+            "description": "Supplier master data",
+            "columns": "supplier_name, country, default_currency, lead_time_days, [lead_time_stddev], [defect_rate_pct]",
+        },
+        "materials": {
+            "description": "Material catalog",
+            "columns": "material_name, category, standard_cost",
+        },
+        "purchase_orders": {
+            "description": "PO headers",
+            "columns": "order_date, supplier_name, total_amount, currency_code, [delivery_date]",
+        },
+        "purchase_order_items": {
+            "description": "PO line items",
+            "columns": "po_number, material_name, quantity, unit_price",
+        },
+    }
+
+    OPTIONAL_FILES = {
+        "fx_rates": {
+            "description": "Historical FX rates (auto-generated if omitted)",
+            "columns": "rate_date, currency_code, rate_to_usd",
+        },
+    }
+
+    uploaded_dfs: dict[str, pd.DataFrame] = {}
+    validation_passed = True
+
+    if upload_method == "📦 ZIP archive (all CSVs in one file)":
+        zip_file = st.file_uploader(
+            "Upload a ZIP file containing your CSV files",
+            type=["zip"],
+            help="The ZIP should contain: suppliers.csv, materials.csv, purchase_orders.csv, purchase_order_items.csv",
+        )
+        if zip_file is not None:
+            import zipfile
+            import io
+
+            with zipfile.ZipFile(io.BytesIO(zip_file.read())) as zf:
+                csv_names = [n for n in zf.namelist() if n.lower().endswith(".csv")]
+                st.caption(f"Found {len(csv_names)} CSV file(s) in archive: {', '.join(csv_names)}")
+
+                for csv_name in csv_names:
+                    stem = Path(csv_name).stem.lower()
+                    if stem in REQUIRED_FILES or stem in OPTIONAL_FILES:
+                        with zf.open(csv_name) as f:
+                            uploaded_dfs[stem] = pd.read_csv(f)
+
+    else:
+        st.markdown("Upload the **4 required** CSV files (and optionally `fx_rates.csv`):")
+        cols = st.columns(2)
+
+        for i, (name, info) in enumerate(REQUIRED_FILES.items()):
+            with cols[i % 2]:
+                f = st.file_uploader(
+                    f"**{name}.csv** — {info['description']}",
+                    type=["csv"],
+                    key=f"upload_{name}",
+                    help=f"Required columns: {info['columns']}",
+                )
+                if f is not None:
+                    uploaded_dfs[name] = pd.read_csv(f)
+
+        st.divider()
+        st.markdown("**Optional:**")
+        f = st.file_uploader(
+            "fx_rates.csv — Historical FX rates",
+            type=["csv"],
+            key="upload_fx_rates",
+            help="Optional. Auto-generated from live APIs if omitted.",
+        )
+        if f is not None:
+            uploaded_dfs["fx_rates"] = pd.read_csv(f)
+
+    # ── Validation ───────────────────────────────────────────────────────────
+    if uploaded_dfs:
+        st.divider()
+        st.subheader("📋 Validation Results")
+
+        missing = [n for n in REQUIRED_FILES if n not in uploaded_dfs]
+        if missing:
+            st.error(f"❌ Missing required files: **{', '.join(f'{m}.csv' for m in missing)}**")
+            validation_passed = False
+
+        SCHEMA_CHECK = {
+            "suppliers": ["supplier_name", "country", "default_currency", "lead_time_days"],
+            "materials": ["material_name", "category", "standard_cost"],
+            "purchase_orders": ["order_date", "supplier_name", "total_amount", "currency_code"],
+            "purchase_order_items": ["po_number", "material_name", "quantity", "unit_price"],
+        }
+
+        for name, df in uploaded_dfs.items():
+            with st.expander(f"{'✅' if name not in missing else '❌'} **{name}.csv** — {len(df):,} rows, {len(df.columns)} columns", expanded=True):
+                # Column check
+                if name in SCHEMA_CHECK:
+                    required_cols = SCHEMA_CHECK[name]
+                    present = [c for c in required_cols if c in df.columns]
+                    absent = [c for c in required_cols if c not in df.columns]
+                    if absent:
+                        st.error(f"Missing columns: {', '.join(absent)}")
+                        validation_passed = False
+                    else:
+                        st.success(f"All required columns present: {', '.join(present)}")
+
+                # Null check
+                null_counts = df.isnull().sum()
+                nulls = null_counts[null_counts > 0]
+                if len(nulls) > 0:
+                    st.warning(f"Columns with nulls: {', '.join(f'{c} ({n})' for c, n in nulls.items())}")
+
+                # Preview
+                st.dataframe(df.head(10), use_container_width=True, hide_index=True)
+
+        # ── Processing ───────────────────────────────────────────────────────
+        st.divider()
+
+        if not missing and validation_passed:
+            st.success("✅ All validations passed. Ready to import.")
+
+            col_import, col_info = st.columns([1, 2])
+            with col_import:
+                run_import = st.button(
+                    "🚀 Import & Run Analytics",
+                    type="primary",
+                    use_container_width=True,
+                    disabled=DEMO_MODE,
+                )
+            with col_info:
+                st.caption(
+                    "This will: (1) clear existing transactional data, "
+                    "(2) import your CSVs, (3) run ETL pipeline, "
+                    "(4) run analytics. All dashboard pages will update."
+                )
+
+            if run_import and not DEMO_MODE:
+                import tempfile
+                import shutil
+
+                with st.spinner("Importing data and running analytics pipeline..."):
+                    progress = st.progress(0, text="Saving uploaded files...")
+
+                    # Save CSVs to a temp directory
+                    tmp_dir = Path(tempfile.mkdtemp(prefix="pvis_upload_"))
+                    try:
+                        for name, df in uploaded_dfs.items():
+                            df.to_csv(tmp_dir / f"{name}.csv", index=False)
+                        progress.progress(20, text="Running external data loader...")
+
+                        # Run external data loader
+                        from data_ingestion.external_data_loader import ExternalDataLoader
+                        loader = ExternalDataLoader(str(tmp_dir))
+                        if loader.load_all_files():
+                            progress.progress(40, text="Importing into database...")
+                            loader.import_data()
+                            progress.progress(60, text="Running ETL pipeline...")
+
+                            # Run ETL
+                            from data_ingestion.populate_warehouse import main as run_etl
+                            run_etl()
+                            progress.progress(80, text="Running analytics...")
+
+                            # Run analytics
+                            from analytics.advanced_analytics import run_fx_simulation, run_supplier_risk
+                            run_supplier_risk()
+                            run_fx_simulation(currency_id=3, days=90, simulations=10000)
+                            progress.progress(100, text="Complete!")
+
+                            st.success(
+                                "🎉 **Import complete!** Your company data is now loaded. "
+                                "Navigate to any dashboard page to see your data."
+                            )
+                            st.balloons()
+
+                            # Clear caches so pages reload with new data
+                            st.cache_data.clear()
+                        else:
+                            st.error("❌ Data validation failed during import. Check your CSV files.")
+                    except Exception as e:
+                        st.error(f"❌ Import failed: {e}")
+                    finally:
+                        shutil.rmtree(tmp_dir, ignore_errors=True)
+        else:
+            st.error("⚠️ Fix the validation errors above before importing.")
+
+    else:
+        # Show format guide when no files uploaded
+        st.subheader("📘 CSV Format Guide")
+        for name, info in {**REQUIRED_FILES, **OPTIONAL_FILES}.items():
+            required = "Required" if name in REQUIRED_FILES else "Optional"
+            st.markdown(f"**`{name}.csv`** ({required}) — {info['description']}")
+            st.code(info["columns"], language=None)
+
+        st.info(
+            "💡 **Tip:** Download template files from the "
+            "[external_data_samples/](https://github.com/DavidMaco/pvis/tree/main/external_data_samples) "
+            "folder to see the exact format expected."
+        )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 8 — Pipeline Runner
 # ══════════════════════════════════════════════════════════════════════════════
 
 elif page == "⚙️ Pipeline Runner":
