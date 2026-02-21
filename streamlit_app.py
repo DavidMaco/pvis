@@ -14,6 +14,7 @@ from datetime import datetime
 import requests
 from pathlib import Path
 import tomllib
+import os
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -25,38 +26,69 @@ st.set_page_config(
 
 # ── Database connection ──────────────────────────────────────────────────────
 
-@st.cache_resource
-def get_engine():
-    """Create a cached SQLAlchemy engine from Streamlit secrets or env."""
+
+def _is_streamlit_cloud() -> bool:
+    """Best-effort detection for Streamlit Community Cloud runtime."""
+    return Path("/mount/src").exists() or os.getenv("STREAMLIT_SHARING_MODE") == "community"
+
+
+def _build_db_url() -> str:
+    """Resolve DB URL from env/secrets with safe Cloud behavior."""
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        return database_url
+
     try:
         db = st.secrets["database"]
-        url = (
+        return (
             f"mysql+pymysql://{db['user']}:{db['password']}"
             f"@{db['host']}:{db['port']}/{db['name']}"
         )
     except Exception:
-        # Fallback to repo-local secrets.toml if Streamlit secrets are not loaded
-        try:
-            secrets_path = Path(__file__).resolve().parent / ".streamlit" / "secrets.toml"
-            if secrets_path.exists():
-                with secrets_path.open("rb") as handle:
-                    secrets = tomllib.load(handle)
-                db = secrets.get("database", {})
-                if db:
-                    url = (
-                        f"mysql+pymysql://{db['user']}:{db['password']}"
-                        f"@{db['host']}:{db['port']}/{db['name']}"
-                    )
-                else:
-                    url = "mysql+pymysql://root:Maconoelle86@127.0.0.1:3306/pro_intel_2"
-            else:
-                url = "mysql+pymysql://root:Maconoelle86@127.0.0.1:3306/pro_intel_2"
-        except Exception:
-            url = "mysql+pymysql://root:Maconoelle86@127.0.0.1:3306/pro_intel_2"
+        pass
+
+    # Fallback to repo-local secrets.toml (local development only)
+    secrets_path = Path(__file__).resolve().parent / ".streamlit" / "secrets.toml"
+    if secrets_path.exists():
+        with secrets_path.open("rb") as handle:
+            secrets = tomllib.load(handle)
+        db = secrets.get("database", {})
+        if db:
+            return (
+                f"mysql+pymysql://{db['user']}:{db['password']}"
+                f"@{db['host']}:{db['port']}/{db['name']}"
+            )
+
+    if _is_streamlit_cloud():
+        raise RuntimeError(
+            "Database is not configured for Streamlit Cloud. "
+            "Add [database] secrets in App Settings → Secrets (host, port, user, password, name)."
+        )
+
+    return "mysql+pymysql://root:Maconoelle86@127.0.0.1:3306/pro_intel_2"
+
+@st.cache_resource
+def get_engine():
+    """Create a cached SQLAlchemy engine from env/secrets/local config."""
+    url = _build_db_url()
     return create_engine(url, pool_pre_ping=True, pool_recycle=300)
 
 
-engine = get_engine()
+try:
+    engine = get_engine()
+except Exception as e:
+    st.error(f"Database initialization failed: {e}")
+    if _is_streamlit_cloud():
+        st.info(
+            "On Streamlit Cloud, configure external MySQL credentials in App Settings → Secrets:\n"
+            "[database]\n"
+            "host = \"your-host\"\n"
+            "port = 3306\n"
+            "user = \"your-user\"\n"
+            "password = \"your-password\"\n"
+            "name = \"pro_intel_2\""
+        )
+    st.stop()
 
 
 def run_query(query: str, params=None) -> pd.DataFrame:
