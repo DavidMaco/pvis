@@ -12,6 +12,8 @@ from plotly.subplots import make_subplots
 from sqlalchemy import create_engine, text
 from datetime import datetime
 import requests
+from pathlib import Path
+import tomllib
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -33,7 +35,24 @@ def get_engine():
             f"@{db['host']}:{db['port']}/{db['name']}"
         )
     except Exception:
-        url = "mysql+pymysql://root:Maconoelle86@localhost:3306/pro_intel_2"
+        # Fallback to repo-local secrets.toml if Streamlit secrets are not loaded
+        try:
+            secrets_path = Path(__file__).resolve().parent / ".streamlit" / "secrets.toml"
+            if secrets_path.exists():
+                with secrets_path.open("rb") as handle:
+                    secrets = tomllib.load(handle)
+                db = secrets.get("database", {})
+                if db:
+                    url = (
+                        f"mysql+pymysql://{db['user']}:{db['password']}"
+                        f"@{db['host']}:{db['port']}/{db['name']}"
+                    )
+                else:
+                    url = "mysql+pymysql://root:Maconoelle86@127.0.0.1:3306/pro_intel_2"
+            else:
+                url = "mysql+pymysql://root:Maconoelle86@127.0.0.1:3306/pro_intel_2"
+        except Exception:
+            url = "mysql+pymysql://root:Maconoelle86@127.0.0.1:3306/pro_intel_2"
     return create_engine(url, pool_pre_ping=True, pool_recycle=300)
 
 
