@@ -281,6 +281,10 @@ elif page == "📈 FX Volatility & Monte Carlo":
         st.warning(f"No FX data for {chosen_code}.")
         st.stop()
 
+    # Normalize date dtype to avoid mixed datetime.date vs Timestamp comparisons
+    hist_df["rate_date"] = pd.to_datetime(hist_df["rate_date"], errors="coerce").dt.normalize()
+    hist_df = hist_df.dropna(subset=["rate_date"]).reset_index(drop=True)
+
     # ── Live rate enrichment ─────────────────────────────────────────────────
     # Always anchor to the real-time API rate so charts and simulations
     # reflect the actual current market, not stale seed/backcast data.
