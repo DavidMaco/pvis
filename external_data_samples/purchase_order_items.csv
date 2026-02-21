@@ -1,0 +1,15 @@
+po_number,material_name,quantity,unit_price
+PO-2024-0001,"PET Resin Grade A",100,1.30
+PO-2024-0001,"HDPE Film 80 micron",50,1.00
+PO-2024-0002,"Chromium Oxide",200,2.20
+PO-2024-0002,"Titanium Dioxide",100,3.60
+PO-2024-0003,"Mild Steel Sheet 5mm",1000,0.78
+PO-2024-0004,"Copper Wire 2mm",500,5.75
+PO-2024-0005,"Engine Oil SAE 40",150,4.50
+PO-2024-0005,"Hydraulic Fluid ISO 46",200,3.95
+PO-2024-0006,"Polypropylene Homo",250,1.08
+PO-2024-0007,"Stainless Steel 304",100,2.30
+PO-2024-0008,"Sulfuric Acid 98%",500,0.48
+PO-2024-0009,"LDPE Granules",300,0.90
+PO-2024-0010,"Aluminum Extrusions",200,1.85
+PO-2024-0010,"Sodium Hydroxide",250,0.70

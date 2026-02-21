@@ -1,0 +1,9 @@
+supplier_name,country,default_currency,lead_time_days,lead_time_stddev,defect_rate_pct
+"ABC Chemical Ltd",Germany,EUR,21,4.2,1.5
+"Shanghai Rubber Co",China,CNY,30,6.0,3.2
+"Lagos Imperial Petrochem",Nigeria,NGN,14,2.8,5.0
+"Mumbai Steel Works",India,USD,25,5.0,2.1
+"Houston Industrial Supply",United States,USD,10,2.0,0.8
+"Yorkshire Polymers Ltd",United Kingdom,GBP,18,3.6,1.2
+"São Paulo Resins SA",Brazil,USD,28,5.6,4.0
+"Johannesburg Mining Corp",South Africa,USD,22,4.4,2.5

@@ -90,6 +90,54 @@ pip install pytest
 python -m pytest tests/ -v
 ```
 
+## Using Your Own Data (External Import)
+
+PVIS can now import your company's actual procurement data instead of using generated seed data.
+
+### Quick Start with External Data
+
+```powershell
+# 1. Prepare CSV files (see external_data_samples/ for templates)
+mkdir ./company_data
+# Place: suppliers.csv, materials.csv, purchase_orders.csv, purchase_order_items.csv
+
+# 2. Import your data
+python data_ingestion/external_data_loader.py --input-dir ./company_data
+
+# 3. Build warehouse (same as seed workflow)
+python data_ingestion/populate_warehouse.py
+
+# 4. Launch dashboard
+streamlit run streamlit_app.py
+```
+
+### Format & Validation
+
+- See `EXTERNAL_DATA_GUIDE.md` for complete CSV specifications
+- See `external_data_samples/` for example files ready to customize
+- The loader validates all inputs before importing
+
+**Required Files:**
+- `suppliers.csv` — supplier details, country, lead times, defect rates
+- `materials.csv` — material name, category, unit cost
+- `purchase_orders.csv` — PO header (date, supplier, amount, currency)
+- `purchase_order_items.csv` — PO line items (quantity, unit price per material)
+
+**Optional:**
+- `fx_rates.csv` — historical FX rates (auto-generated if omitted)
+
+### Workflow Comparison
+
+| Step | Seed Mode (Default) | External Mode |
+|------|-------------------|----------------|
+| Generate Data | `seed_realistic_data.py` | Manual CSV prep |
+| Import Data | (automated) | `external_data_loader.py` |
+| Warehouse ETL | `populate_warehouse.py` | `populate_warehouse.py` |
+| Analytics | `advanced_analytics.py` | `advanced_analytics.py` |
+| Dashboard | `streamlit run streamlit_app.py` | `streamlit run streamlit_app.py` |
+
+---
+
 ## Deployment (Docker)
 
 ```bash

@@ -1,0 +1,16 @@
+material_name,category,standard_cost
+"PET Resin Grade A",Polymers,1.25
+"HDPE Film 80 micron",Polymers,0.95
+"Polypropylene Homo",Polymers,1.05
+"LDPE Granules",Polymers,0.85
+"Chromium Oxide",Chemicals,2.15
+"Sulfuric Acid 98%",Chemicals,0.45
+"Sodium Hydroxide",Chemicals,0.65
+"Titanium Dioxide",Chemicals,3.50
+"Mild Steel Sheet 5mm",Metals,0.75
+"Stainless Steel 304",Metals,2.25
+"Copper Wire 2mm",Metals,5.50
+"Aluminum Extrusions",Metals,1.80
+"Engine Oil SAE 40",Fluids,4.20
+"Hydraulic Fluid ISO 46",Fluids,3.80
+"Coolant Concentrate",Fluids,2.10
