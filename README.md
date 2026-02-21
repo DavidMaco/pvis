@@ -54,40 +54,61 @@ A production-grade procurement intelligence system for manufacturing organizatio
 - MySQL 8.0+ with database `pro_intel_2` created
 - Git
 
-### Setup
+### Setup (Windows/PowerShell)
 
+**QUICKEST: Use the launcher script**
 ```powershell
-# Clone and install
+# Clone and setup (one-time)
 git clone https://github.com/DavidMaco/Procurement_Intelligence_Proj1.git
 cd Procurement_Intelligence_Proj1
-
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# Configure database credentials
-cp .streamlit/secrets.toml.example .streamlit/secrets.toml
-# Edit .streamlit/secrets.toml with your MySQL password
+# [Optional] Configure custom MySQL credentials
+cp .streamlit\secrets.toml.example .streamlit\secrets.toml
+# Edit .streamlit\secrets.toml with your credentials if needed
 
-# Seed data (fetches live FX rates)
-python data_ingestion/seed_realistic_data.py
+# Seed sample data
+python data_ingestion\seed_realistic_data.py
+python data_ingestion\populate_warehouse.py
+python analytics\advanced_analytics.py
 
-# Build star-schema warehouse
-python data_ingestion/populate_warehouse.py
-
-# Run analytics (Monte Carlo + risk scoring)
-python analytics/advanced_analytics.py
-
-# Launch dashboard
-streamlit run streamlit_app.py
-# Open http://localhost:8501
+# ✓ Launch dashboard with auto-setup
+.\RUN_STREAMLIT.ps1
+# Opens automatically at http://localhost:8501
 ```
+
+**MANUAL: Step-by-step**
+```powershell
+# 1. Create virtual environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Seed data (generates realistic 3-year procurement data with live FX rates)
+python data_ingestion\seed_realistic_data.py
+
+# 4. Populate warehouse (star-schema ETL)
+python data_ingestion\populate_warehouse.py
+
+# 5. Run analytics (Monte Carlo + supplier risk scoring)
+python analytics\advanced_analytics.py
+
+# 6. Launch dashboard
+streamlit run streamlit_app.py
+# Opens at http://localhost:8501
+```
+
+**FULL GUIDE:** See [WINDOWS_SETUP_GUIDE.md](WINDOWS_SETUP_GUIDE.md) for detailed Windows/PowerShell instructions.
 
 ### Run Tests
 
 ```powershell
 pip install pytest
-python -m pytest tests/ -v
+python -m pytest tests\ -v
 ```
 
 ## Using Your Own Data (External Import)
@@ -97,15 +118,15 @@ PVIS can now import your company's actual procurement data instead of using gene
 ### Quick Start with External Data
 
 ```powershell
-# 1. Prepare CSV files (see external_data_samples/ for templates)
-mkdir ./company_data
-# Place: suppliers.csv, materials.csv, purchase_orders.csv, purchase_order_items.csv
+# 1. Prepare CSV files (see external_data_samples\ for templates)
+mkdir .\company_data
+# Copy/edit: suppliers.csv, materials.csv, purchase_orders.csv, purchase_order_items.csv
 
 # 2. Import your data
-python data_ingestion/external_data_loader.py --input-dir ./company_data
+python data_ingestion\external_data_loader.py --input-dir .\company_data
 
 # 3. Build warehouse (same as seed workflow)
-python data_ingestion/populate_warehouse.py
+python data_ingestion\populate_warehouse.py
 
 # 4. Launch dashboard
 streamlit run streamlit_app.py
@@ -140,33 +161,46 @@ streamlit run streamlit_app.py
 
 ## Deployment (Docker)
 
-```bash
+**On Windows:**
+```powershell
 docker-compose up --build
 # Dashboard at http://localhost:8501
 ```
+
+**Prerequisites:** Docker Desktop for Windows installed and running.
 
 ## Repository Structure
 
 ```
 ├── streamlit_app.py              # 7-page Streamlit executive dashboard
+├── RUN_STREAMLIT.ps1             # Windows: Quick launcher script
 ├── config.py                     # DB connection (Streamlit secrets / env fallback)
+├── WINDOWS_SETUP_GUIDE.md        # Windows/PowerShell setup instructions
+├── EXTERNAL_DATA_GUIDE.md        # Complete CSV import guide
 ├── analytics/
 │   └── advanced_analytics.py     # Monte Carlo FX sim + supplier risk scoring
 ├── data_ingestion/
 │   ├── seed_realistic_data.py    # 3-year realistic data generator (live FX)
+│   ├── external_data_loader.py   # CSV import with validation
 │   └── populate_warehouse.py     # Star-schema ETL pipeline
+├── external_data_samples/        # Template CSV files for external import
+│   ├── suppliers.csv
+│   ├── materials.csv
+│   ├── purchase_orders.csv
+│   ├── purchase_order_items.csv
+│   └── README.md
 ├── database/
 │   └── add_constraints_migration.sql  # FK/CHECK constraints + indexes
 ├── tests/                        # pytest suite (12 tests)
 ├── .streamlit/
-│   ├── config.toml               # Theme and server settings
-│   └── secrets.toml.example      # Credentials template
+│   ├── config.toml               # Streamlit theme and server settings
+│   └── secrets.toml.example      # MySQL credentials template
 ├── .github/workflows/
 │   └── python-app.yml            # CI pipeline
 ├── Dockerfile                    # Streamlit container
 ├── docker-compose.yml            # Full stack (app + MySQL)
 ├── requirements.txt              # Python dependencies
-└── PROJECT_WALKTHROUGH.md        # Detailed build history
+└── README.md                     # This file
 ```
 
 ## Data Model
@@ -190,4 +224,5 @@ Repository: [DavidMaco/Procurement_Intelligence_Proj1](https://github.com/DavidM
 
 ---
 
-*Last updated: February 20, 2026*
+*Last updated: February 21, 2026*  
+**Note:** For Streamlit dashboard standalone execution on Windows, see [WINDOWS_SETUP_GUIDE.md](WINDOWS_SETUP_GUIDE.md) and use `RUN_STREAMLIT.ps1`

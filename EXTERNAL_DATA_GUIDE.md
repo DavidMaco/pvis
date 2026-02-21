@@ -15,14 +15,14 @@ This guide explains how to prepare and import your company data.
 Create a directory with four CSV files following the specifications below.
 
 ### Step 2: Validate & Import
-```bash
+```powershell
 cd procurement-intelligence-engine
-python data_ingestion/external_data_loader.py --input-dir ./company_data
+python data_ingestion\external_data_loader.py --input-dir .\company_data
 ```
 
 ### Step 3: Populate Warehouse
-```bash
-python data_ingestion/populate_warehouse.py
+```powershell
+python data_ingestion\populate_warehouse.py
 ```
 
 ### Step 4: (Optional) Import FX Rates
@@ -30,7 +30,11 @@ If you have historical FX rates, place `fx_rates.csv` in the same directory.
 Otherwise, the system generates realistic rates for analysis.
 
 ### Step 5: Launch Dashboard
-```bash
+```powershell
+# Option A: Quick launcher (recommended)
+.\RUN_STREAMLIT.ps1
+
+# Option B: Manual launch
 streamlit run streamlit_app.py
 ```
 
@@ -286,7 +290,7 @@ For large datasets (>100K POs), consider:
 
 **1. Prepare Files**
 ```
-company_data/
+company_data\
   ├─ suppliers.csv        (20 suppliers)
   ├─ materials.csv        (150 materials)
   ├─ purchase_orders.csv  (5,000 POs from Q4 2024)
@@ -295,8 +299,8 @@ company_data/
 ```
 
 **2. Import**
-```bash
-python data_ingestion/external_data_loader.py --input-dir ./company_data
+```powershell
+python data_ingestion\external_data_loader.py --input-dir .\company_data
 ```
 Output:
 ```
@@ -316,12 +320,12 @@ Importing data into database...
 ```
 
 **3. Populate Warehouse**
-```bash
-python data_ingestion/populate_warehouse.py
+```powershell
+python data_ingestion\populate_warehouse.py
 ```
 
 **4. Launch & Analyze**
-```bash
+```powershell
 streamlit run streamlit_app.py
 ```
 
