@@ -92,7 +92,7 @@ def _supplier_risk_ranking() -> pd.DataFrame:
 
 
 def _monthly_trend() -> pd.DataFrame:
-    months = _monthly_dates(18)
+    months = _monthly_dates(36)
     base = 600_000
     spend = [base + _RNG.normal(0, 60_000) + i * 12_000 for i in range(len(months))]
     return pd.DataFrame({"month": months, "spend_usd": spend})
@@ -103,8 +103,8 @@ def _currency_list() -> pd.DataFrame:
 
 
 def _fx_history(currency_id: int = 3) -> pd.DataFrame:
-    """Generate realistic FX history for the given currency."""
-    days = _daily_dates(365)
+    """Generate realistic 3-year FX history for the given currency."""
+    days = _daily_dates(1095)
     start_rates = {1: 1.0, 2: 0.92, 3: 1450.0, 4: 0.79, 5: 7.25}
     base = start_rates.get(currency_id, 100.0)
     rates = [base]

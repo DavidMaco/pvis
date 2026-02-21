@@ -322,7 +322,7 @@ elif page == "📈 FX Volatility & Monte Carlo":
         chosen_code = st.selectbox("Currency", list(currency_options.keys()), index=0)
         chosen_id = currency_options[chosen_code]
     with param_col:
-        sim_days = st.slider("Forecast horizon (days)", 30, 365, 90)
+        sim_days = st.slider("Forecast horizon (days)", 30, 1095, 90)
         sim_count = st.select_slider(
             "Simulations", options=[1000, 5000, 10000, 25000, 50000], value=10000
         )
