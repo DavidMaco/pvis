@@ -79,7 +79,7 @@ SUPPLIERS = [
     (4, "Mumbai Steel & Alloys",     4, 1, 0.48, 25),
     (5, "Houston Petrochem Inc",     5, 1, 0.20, 10),
     (6, "Yorkshire Compounds Ltd",   6, 4, 0.35, 18),
-    (7, "São Paulo Resinas SA",      7, 1, 0.58, 28),
+    (7, "Sao Paulo Resinas SA",      7, 1, 0.58, 28),
     (8, "Johannesburg Mining Corp",  8, 1, 0.45, 22),
 ]
 
@@ -91,7 +91,7 @@ SUPPLIER_OTD_PROB = {
     4: 0.86,   # Mumbai – moderate
     5: 0.96,   # Houston – lowest risk → highest OTD
     6: 0.92,   # Yorkshire – low-moderate risk
-    7: 0.80,   # São Paulo – higher risk
+    7: 0.80,   # Sao Paulo - higher risk
     8: 0.88,   # Johannesburg – moderate
 }
 

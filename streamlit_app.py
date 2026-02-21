@@ -462,6 +462,11 @@ elif page == "🏭 Supplier Risk Analysis":
         ORDER BY spm.composite_risk_score DESC
     """)
 
+    # Fix encoding corruption from cloud DB import (São → S??o / S├úo)
+    for col in perf_df.select_dtypes(include="object").columns:
+        perf_df[col] = perf_df[col].str.replace(r"S[\u00e3\u00c3\u0103]o", "Sao", regex=True)
+        perf_df[col] = perf_df[col].str.replace(r"S..o(?= Paulo)", "Sao", regex=True)
+
     if perf_df.empty:
         st.warning("No supplier performance data. Run the analytics pipeline first.")
         st.stop()
@@ -489,6 +494,22 @@ elif page == "🏭 Supplier Risk Analysis":
 
     # ── Detail table ─────────────────────────────────────────────────────────
     st.subheader("Detailed Metrics")
+
+    def _risk_bg(val):
+        """Risk score → CSS background color (no matplotlib needed)."""
+        try:
+            v = float(val)
+        except (ValueError, TypeError):
+            return ""
+        if v >= 7:
+            return "background-color: #fecaca; color: #991b1b"
+        elif v >= 5:
+            return "background-color: #fed7aa; color: #9a3412"
+        elif v >= 3:
+            return "background-color: #fef9c3; color: #854d0e"
+        else:
+            return "background-color: #bbf7d0; color: #166534"
+
     st.dataframe(
         perf_df.style.format({
             "avg_lead_time": "{:.1f}",
@@ -498,7 +519,7 @@ elif page == "🏭 Supplier Risk Analysis":
             "on_time_delivery_pct": "{:.1f}%",
             "fx_exposure_pct": "{:.1f}%",
             "composite_risk_score": "{:.2f}",
-        }).background_gradient(subset=["composite_risk_score"], cmap="YlOrRd"),
+        }).map(_risk_bg, subset=["composite_risk_score"]),
         use_container_width=True,
         hide_index=True,
     )
