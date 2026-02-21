@@ -271,7 +271,7 @@ if page == "🏠 Executive Summary":
                 labels={"composite_risk_score": "Risk Score", "supplier_name": ""},
             )
             fig.update_layout(yaxis=dict(autorange="reversed"), height=400, showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
     with right:
         st.subheader("Monthly Procurement Trend")
@@ -292,7 +292,7 @@ if page == "🏠 Executive Summary":
                 labels={"month": "Month", "spend_usd": "Spend (USD)"},
             )
             fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -382,7 +382,7 @@ elif page == "📈 FX Volatility & Monte Carlo":
             name="Live Rate",
         )
     fig_hist.update_layout(height=350)
-    st.plotly_chart(fig_hist, use_container_width=True)
+    st.plotly_chart(fig_hist, width='stretch')
 
     # ── Run Monte Carlo ──────────────────────────────────────────────────────
     if st.button("🎲 Run Monte Carlo Simulation", type="primary"):
@@ -427,7 +427,7 @@ elif page == "📈 FX Volatility & Monte Carlo":
         )
         fig_fan.add_trace(go.Scatter(x=days_range, y=p50, mode="lines", line=dict(color="#1d4f91", width=2), name="Median"))
         fig_fan.update_layout(xaxis_title="Days Ahead", yaxis_title=f"{chosen_code} per 1 USD", height=400)
-        st.plotly_chart(fig_fan, use_container_width=True)
+        st.plotly_chart(fig_fan, width='stretch')
 
         # Distribution histogram
         st.subheader("Terminal Rate Distribution")
@@ -441,7 +441,7 @@ elif page == "📈 FX Volatility & Monte Carlo":
         fig_dist.add_vline(x=np.percentile(final_rates, 50), line_dash="dash", line_color="blue", annotation_text="P50")
         fig_dist.add_vline(x=np.percentile(final_rates, 95), line_dash="dash", line_color="green", annotation_text="P95")
         fig_dist.update_layout(height=350)
-        st.plotly_chart(fig_dist, use_container_width=True)
+        st.plotly_chart(fig_dist, width='stretch')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -490,7 +490,7 @@ elif page == "🏭 Supplier Risk Analysis":
         aspect="auto",
     )
     fig_heat.update_layout(height=max(350, len(heat_norm) * 45))
-    st.plotly_chart(fig_heat, use_container_width=True)
+    st.plotly_chart(fig_heat, width='stretch')
 
     # ── Detail table ─────────────────────────────────────────────────────────
     st.subheader("Detailed Metrics")
@@ -520,7 +520,7 @@ elif page == "🏭 Supplier Risk Analysis":
             "fx_exposure_pct": "{:.1f}%",
             "composite_risk_score": "{:.2f}",
         }).map(_risk_bg, subset=["composite_risk_score"]),
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
     )
 
@@ -538,7 +538,7 @@ elif page == "🏭 Supplier Risk Analysis":
     fig_lt.update_layout(height=400)
     fig_lt.update_yaxes(title_text="Std Dev (days)", secondary_y=False)
     fig_lt.update_yaxes(title_text="Avg Lead Time (days)", secondary_y=True)
-    st.plotly_chart(fig_lt, use_container_width=True)
+    st.plotly_chart(fig_lt, width='stretch')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -562,7 +562,7 @@ elif page == "💰 Spend & Cost Analysis":
         if not spend_sup.empty:
             fig = px.pie(spend_sup, names="supplier_name", values="spend_usd", hole=0.4)
             fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
     with right:
         st.subheader("Spend by Material Category")
@@ -576,7 +576,7 @@ elif page == "💰 Spend & Cost Analysis":
         if not spend_cat.empty:
             fig = px.pie(spend_cat, names="category", values="spend_usd", hole=0.4)
             fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
     # ── Cost leakage ─────────────────────────────────────────────────────────
     st.subheader("Cost Leakage by Category")
@@ -596,7 +596,7 @@ elif page == "💰 Spend & Cost Analysis":
             labels={"leakage_usd": "Leakage (USD)", "category": "Category"},
         )
         fig.update_layout(height=400)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     # ── Annual spend summary ─────────────────────────────────────────────────
     st.subheader("Annual Spend by Supplier")
@@ -613,7 +613,7 @@ elif page == "💰 Spend & Cost Analysis":
             labels={"total_spend_usd": "Spend (USD)", "supplier_name": "Supplier"},
         )
         fig.update_layout(height=450)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -634,7 +634,7 @@ elif page == "🏦 Working Capital":
     if not inv_df.empty:
         fig = px.area(inv_df, x="snapshot_date", y="total_inv", labels={"total_inv": "Inventory Value (USD)"})
         fig.update_layout(height=350)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     # ── DPO vs DIO ───────────────────────────────────────────────────────────
     left, right = st.columns(2)
@@ -647,7 +647,7 @@ elif page == "🏦 Working Capital":
         if not pay_df.empty:
             fig = px.line(pay_df, x="summary_date", y="accounts_payable_usd")
             fig.update_layout(height=300)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
     with right:
         st.subheader("Receivables Trend")
@@ -657,7 +657,7 @@ elif page == "🏦 Working Capital":
         if not rec_df.empty:
             fig = px.line(rec_df, x="summary_date", y="accounts_receivable_usd")
             fig.update_layout(height=300)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
     # ── CCC ──────────────────────────────────────────────────────────────────
     st.subheader("Cash Conversion Cycle")
@@ -747,7 +747,7 @@ elif page == "🔄 Scenario Planning":
         )
         fig.add_hline(y=0, line_dash="solid", line_color="black")
         fig.update_layout(height=420)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
         st.dataframe(
             scenario_df.style.format({
@@ -755,7 +755,7 @@ elif page == "🔄 Scenario Planning":
                 "Stressed USD": "${:,.0f}",
                 "Impact USD": "${:,.0f}",
             }),
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
         )
 
@@ -930,7 +930,7 @@ elif page == "📂 Company Data Upload":
                     st.warning(f"Columns with nulls: {', '.join(f'{c} ({n})' for c, n in nulls.items())}")
 
                 # Preview
-                st.dataframe(df.head(10), use_container_width=True, hide_index=True)
+                st.dataframe(df.head(10), width='stretch', hide_index=True)
 
         # ── Processing ───────────────────────────────────────────────────────
         st.divider()
@@ -943,7 +943,7 @@ elif page == "📂 Company Data Upload":
                 run_import = st.button(
                     "🚀 Import & Run Analytics",
                     type="primary",
-                    use_container_width=True,
+                    width='stretch',
                     disabled=DEMO_MODE,
                 )
             with col_info:
@@ -1045,7 +1045,7 @@ elif page == "⚙️ Pipeline Runner":
 
     with col_a:
         st.subheader("Data Generation & ETL")
-        if st.button("1️⃣ Generate Sample Data", use_container_width=True):
+        if st.button("1️⃣ Generate Sample Data", width='stretch'):
             with st.spinner("Generating sample data..."):
                 try:
                     from data_ingestion.seed_realistic_data import main as gen_data
@@ -1054,7 +1054,7 @@ elif page == "⚙️ Pipeline Runner":
                 except Exception as e:
                     st.error(f"Failed: {e}")
 
-        if st.button("2️⃣ Run ETL / Populate Warehouse", use_container_width=True):
+        if st.button("2️⃣ Run ETL / Populate Warehouse", width='stretch'):
             with st.spinner("Running ETL pipeline..."):
                 try:
                     from data_ingestion.populate_warehouse import main as run_etl
@@ -1065,7 +1065,7 @@ elif page == "⚙️ Pipeline Runner":
 
     with col_b:
         st.subheader("Analytics")
-        if st.button("3️⃣ Run FX Simulation", use_container_width=True):
+        if st.button("3️⃣ Run FX Simulation", width='stretch'):
             with st.spinner("Running Monte Carlo simulation (10K paths)..."):
                 try:
                     from analytics.advanced_analytics import run_fx_simulation
@@ -1074,7 +1074,7 @@ elif page == "⚙️ Pipeline Runner":
                 except Exception as e:
                     st.error(f"Failed: {e}")
 
-        if st.button("4️⃣ Run Supplier Risk Scoring", use_container_width=True):
+        if st.button("4️⃣ Run Supplier Risk Scoring", width='stretch'):
             with st.spinner("Calculating supplier risk metrics..."):
                 try:
                     from analytics.advanced_analytics import run_supplier_risk
@@ -1098,4 +1098,4 @@ elif page == "⚙️ Pipeline Runner":
         cnt_df = run_query(f"SELECT COUNT(*) AS cnt FROM {tbl}")
         cnt = int(cnt_df.iloc[0]["cnt"]) if not cnt_df.empty else 0
         health_rows.append({"Table": tbl, "Row Count": cnt, "Status": "✅" if cnt > 0 else "❌ EMPTY"})
-    st.dataframe(pd.DataFrame(health_rows), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(health_rows), width='stretch', hide_index=True)
