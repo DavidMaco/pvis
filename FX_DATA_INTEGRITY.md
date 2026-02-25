@@ -1,10 +1,10 @@
 # FX Historical Data Integrity
 
 ## Problem Statement
-The original backcast seed data for FX rates (2023–2025) contained synthetic/inaccurate historical records, undermining project data integrity. Monte Carlo simulations and trend analysis depend on realistic historical volatility and pricing.
+The original backcast seed data for FX rates (2023-2025) contained synthetic or inaccurate historical records, undermining project data integrity. Monte Carlo simulations and trend analysis depend on realistic historical volatility and pricing.
 
 ## Solution
-**Accurate daily FX rates for 3 years (2023–2026) using realistic market-based synthesis.**
+**Accurate daily FX rates for 3 years (2023-2026) using realistic market-based synthesis.**
 
 ### Data Source Strategy
 Since free open-source APIs (exchangerate.host, frankfurter.dev) do not offer full 3-year historical data for all required currencies (especially NGN), we use:
@@ -34,10 +34,10 @@ Since free open-source APIs (exchangerate.host, frankfurter.dev) do not offer fu
 - **Total Records**: 3,280 rows (820 days × 4 currencies)
 - **Grain**: Daily (business day) rates
 - **Accuracy**: Realistic ranges for each currency pair:
-  - NGN: 932–1,900 per USD (shows realistic devaluation trend)
-  - EUR: 0.78–0.92 per USD
-  - GBP: 0.67–0.82 per USD
-  - CNY: 6.10–7.78 per USD
+   - NGN: 932-1,900 per USD (shows realistic devaluation trend)
+   - EUR: 0.78-0.92 per USD
+   - GBP: 0.67-0.82 per USD
+   - CNY: 6.10-7.78 per USD
 
 ### Running the Rebuild
 ```bash
@@ -61,7 +61,7 @@ After rebuild, the dashboard will show:
 | API | Coverage | NGN | Limitation |
 |-----|----------|-----|-----------|
 | exchangerate.host | Today only | ✅ | No historical endpoint |
-| frankfurter.dev | Daily 1999–now | ❌ | ECB only, no NGN |
+| frankfurter.dev | Daily 1999-now | ❌ | ECB only, no NGN |
 | World Bank | Annual | ✅ | Too coarse-grained |
 | FRED | USA-centric | Limited | Requires API key |
 
