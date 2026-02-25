@@ -55,7 +55,7 @@ Required when importing company data.
 | **default_currency** | Text | ✓ | 3-letter currency code: USD, EUR, GBP, CNY, NGN |
 | **lead_time_days** | Number | ✓ | Average delivery time in days (must be > 0) |
 | **lead_time_stddev** | Number | ✗ | Lead time standard deviation (defaults to 20% of lead_time_days) |
-| **defect_rate_pct** | Number | ✗ | Historical defect rate as % (0–100, defaults to 2.0) |
+| **defect_rate_pct** | Number | ✗ | Historical defect rate as % (0-100, defaults to 2.0) |
 
 #### Example
 
@@ -273,8 +273,8 @@ After importing external data:
 
 ## Performance Notes
 
-- **Scale:** PVIS is optimized for 8–200 suppliers, 50–1,000 materials, 500–20,000 POs
-- **Date Range:** Recommended 1–5 years of historical data
+- **Scale:** PVIS is optimized for 8-200 suppliers, 50-1,000 materials, 500-20,000 POs
+- **Date Range:** Recommended 1-5 years of historical data
 - **FX Rates:** Should have records for all dates in your PO data
 
 For large datasets (>100K POs), consider:
@@ -295,7 +295,7 @@ company_data\
   ├─ materials.csv        (150 materials)
   ├─ purchase_orders.csv  (5,000 POs from Q4 2024)
   ├─ purchase_order_items.csv  (12,000 line items)
-  └─ fx_rates.csv         (daily rates Oct–Dec 2024)
+   └─ fx_rates.csv         (daily rates Oct-Dec 2024)
 ```
 
 **2. Import**
