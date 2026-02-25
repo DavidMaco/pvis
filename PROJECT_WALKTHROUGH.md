@@ -1,7 +1,7 @@
 # PROJECT WALKTHROUGH
-## Building the Procurement Intelligence Engine — A Complete Build History
+## Building the Procurement Intelligence Engine: A Complete Build History
 
-**Document Date:** February 20, 2026
+**Document Date:** February 23, 2026
 **Repository:** [DavidMaco/Procurement_Intelligence_Proj1](https://github.com/DavidMaco/Procurement_Intelligence_Proj1)
 **Tech Stack:** Python 3.13 · MySQL 8.0 · Streamlit 1.54 · SQLAlchemy · NumPy · Plotly
 
@@ -10,18 +10,19 @@
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)
-2. [Phase 1 — Foundation (Scaffold & Prototyping)](#2-phase-1--foundation)
-3. [Phase 2 — Database Schema & Constraints](#3-phase-2--database-schema--constraints)
-4. [Phase 3 — Realistic Data Generation](#4-phase-3--realistic-data-generation)
-5. [Phase 4 — Star-Schema ETL Pipeline](#5-phase-4--star-schema-etl-pipeline)
-6. [Phase 5 — Advanced Analytics Engine](#6-phase-5--advanced-analytics-engine)
-7. [Phase 6 — Streamlit Executive Dashboard](#7-phase-6--streamlit-executive-dashboard)
-8. [Phase 7 — Production Hardening](#8-phase-7--production-hardening)
-9. [Phase 8 — Comprehensive Accuracy Audit](#9-phase-8--comprehensive-accuracy-audit)
-10. [Phase 9 — Final Integrity Review & Cleanup](#10-phase-9--final-integrity-review--cleanup)
-11. [Final Architecture](#11-final-architecture)
-12. [Database Schema Reference](#12-database-schema-reference)
-13. [File Manifest](#13-file-manifest)
+2. [Phase 1: Foundation (Scaffold and Prototyping)](#2-phase-1-foundation-scaffold-and-prototyping)
+3. [Phase 2: Database Schema and Constraints](#3-phase-2-database-schema-and-constraints)
+4. [Phase 3: Realistic Data Generation](#4-phase-3-realistic-data-generation)
+5. [Phase 4: Star-Schema ETL Pipeline](#5-phase-4-star-schema-etl-pipeline)
+6. [Phase 5: Advanced Analytics Engine](#6-phase-5-advanced-analytics-engine)
+7. [Phase 6: Streamlit Executive Dashboard](#7-phase-6-streamlit-executive-dashboard)
+8. [Phase 7: Production Hardening](#8-phase-7-production-hardening)
+9. [Phase 8: Comprehensive Accuracy Audit](#9-phase-8-comprehensive-accuracy-audit)
+10. [Phase 9: Final Integrity Review and Cleanup](#10-phase-9-final-integrity-review-and-cleanup)
+11. [Phase 10: LinkedIn Carousel Generator](#11-phase-10-linkedin-carousel-generator)
+12. [Final Architecture](#12-final-architecture)
+13. [Database Schema Reference](#13-database-schema-reference)
+14. [File Manifest](#14-file-manifest)
 
 ---
 
@@ -39,7 +40,7 @@ The project evolved through 9 distinct phases, progressing from a basic Flask pr
 
 ---
 
-## 2. Phase 1 — Foundation
+## 2. Phase 1: Foundation
 
 ### Goal
 Scaffold a basic procurement analytics platform with ETL, supplier intelligence, risk modeling, and a web dashboard.
@@ -83,7 +84,7 @@ procurement-intelligence-engine/
 
 ---
 
-## 3. Phase 2 — Database Schema & Constraints
+## 3. Phase 2: Database Schema and Constraints
 
 ### Goal
 Design a comprehensive 18-table relational schema supporting both transactional operations and analytical warehousing.
@@ -110,7 +111,7 @@ Design a comprehensive 18-table relational schema supporting both transactional 
 
 | Table | Purpose |
 |-------|---------|
-| `dim_date` | 1,461-row date dimension (2023–2026) |
+| `dim_date` | 1,461-row date dimension (2023-2026) |
 | `dim_supplier` | Surrogate-keyed supplier dimension |
 | `dim_material` | Surrogate-keyed material dimension |
 | `fact_procurement` | 1,952 fact rows joining PO items with FX rates |
@@ -123,7 +124,7 @@ Design a comprehensive 18-table relational schema supporting both transactional 
 
 A 288-line SQL migration was written adding:
 - **15 foreign key constraints** (e.g., `fk_po_supplier`, `fk_poi_material`, `fk_fx_currency`)
-- **13 CHECK constraints** (e.g., `risk_index` 0–100, `quantity > 0`, `defect_rate` 0–1)
+- **13 CHECK constraints** (e.g., `risk_index` 0-100, `quantity > 0`, `defect_rate` 0-1)
 - **7 composite indexes** for analytical query performance
 - `fx_simulation_results` table DDL
 
@@ -131,15 +132,15 @@ A 288-line SQL migration was written adding:
 
 | ID | Code | Notes |
 |----|------|-------|
-| 1 | USD | Base currency — no FX rates stored |
+| 1 | USD | Base currency with no FX rates stored |
 | 2 | EUR | European suppliers |
-| 3 | NGN | Nigerian Naira — primary volatility target |
+| 3 | NGN | Nigerian Naira, the primary volatility target |
 | 4 | GBP | British Pound |
 | 5 | CNY | Chinese Yuan |
 
 ---
 
-## 4. Phase 3 — Realistic Data Generation
+## 4. Phase 3: Realistic Data Generation
 
 ### Goal
 Replace prototype synthetic data with 3 years of realistic procurement data including live FX rates.
@@ -151,9 +152,9 @@ Replace prototype synthetic data with 3 years of realistic procurement data incl
 #### Live FX Rate Fetching
 The seed script fetches **real-time FX rates** from three APIs with cascading fallback:
 
-1. **open.er-api.com** (primary — supports all currencies including NGN)
-2. **exchangerate-api.com** (backup — supports NGN)
-3. **frankfurter.app** (ECB source — EUR/GBP only, no NGN)
+1. **open.er-api.com** (primary, supports all currencies including NGN)
+2. **exchangerate-api.com** (backup, supports NGN)
+3. **frankfurter.app** (ECB source, EUR and GBP only, no NGN)
 
 An HTTP client with `User-Agent: PVIS/1.1` prevents 403 blocks from APIs.
 
@@ -185,13 +186,13 @@ Each supplier has a calibrated on-time delivery probability controlling whether 
 #### Data Volumes Generated
 - 8 suppliers × 3 years of POs → ~778 purchase orders, ~1,952 line items
 - 4 currencies × ~3 years daily rates → ~4,384 FX records
-- ~106 quality incidents (5–10% of deliveries)
+- ~106 quality incidents (5-10% of deliveries)
 - 50 materials × 36 months → 1,800 inventory snapshots
 - 36 months each of payables and receivables summaries
 
 ---
 
-## 5. Phase 4 — Star-Schema ETL Pipeline
+## 5. Phase 4: Star-Schema ETL Pipeline
 
 ### Goal
 Build a warehouse ETL that transforms transactional data into analytical dimensions, facts, and aggregates.
@@ -202,7 +203,7 @@ Build a warehouse ETL that transforms transactional data into analytical dimensi
 
 | # | Function | Target Table | Logic |
 |---|----------|-------------|-------|
-| 1 | `populate_dim_date()` | `dim_date` | 4-year calendar (2023–2026), date_key = YYYYMMDD |
+| 1 | `populate_dim_date()` | `dim_date` | 4-year calendar (2023-2026), date_key = YYYYMMDD |
 | 2 | `populate_dim_material()` | `dim_material` | Maps material_id → surrogate material_key |
 | 3 | `populate_dim_supplier()` | `dim_supplier` | Joins `suppliers` ↔ `countries`, assigns surrogate keys |
 | 4 | `populate_fact_procurement()` | `fact_procurement` | Joins PO items with closest-date FX rate, calculates `total_usd_value = local_value / rate_to_usd` |
@@ -243,7 +244,7 @@ Where:
 
 ---
 
-## 6. Phase 5 — Advanced Analytics Engine
+## 6. Phase 5: Advanced Analytics Engine
 
 ### Goal
 Build Monte Carlo FX simulation and composite supplier risk scoring modules.
@@ -285,7 +286,7 @@ Normalizes each metric to [0, 1] and applies the weighted composite formula.
 
 ---
 
-## 7. Phase 6 — Streamlit Executive Dashboard
+## 7. Phase 6: Streamlit Executive Dashboard
 
 ### Goal
 Replace the Flask prototype with a production-grade 7-page Streamlit dashboard.
@@ -320,14 +321,14 @@ Replace the Flask prototype with a production-grade 7-page Streamlit dashboard.
 
 ---
 
-## 8. Phase 7 — Production Hardening
+## 8. Phase 7: Production Hardening
 
 ### Goal
 Make the system deployment-ready with proper config management, containerization, and CI.
 
 ### Changes Made
 
-**`config.py` — Environment-aware configuration:**
+**`config.py`: Environment-aware configuration**
 ```python
 try:
     db = st.secrets["database"]  # Streamlit Cloud secrets
@@ -336,7 +337,7 @@ except Exception:
     DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:***@localhost:3306/pro_intel_2")
 ```
 
-**`Dockerfile` — Streamlit container:**
+**`Dockerfile`: Streamlit container**
 ```dockerfile
 FROM python:3.13-slim
 WORKDIR /app
@@ -348,12 +349,12 @@ HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
 CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
 ```
 
-**`docker-compose.yml` — Full stack:**
+**`docker-compose.yml`: Full stack**
 - Streamlit app container on port 8501
 - MySQL 8.0 container with persistent volume
 - Environment variable injection for credentials
 
-**`.streamlit/secrets.toml.example`** — Template for credentials (never committed)
+**`.streamlit/secrets.toml.example`**: Template for credentials (never committed)
 
 **GitHub Actions CI** (`.github/workflows/python-app.yml`):
 - Triggers on push/PR to main
@@ -365,7 +366,7 @@ CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.add
 
 ---
 
-## 9. Phase 8 — Comprehensive Accuracy Audit
+## 9. Phase 8: Comprehensive Accuracy Audit
 
 ### Goal
 Conduct a thorough data accuracy audit to find and fix every numerical, logical, and query error.
@@ -387,13 +388,13 @@ Conduct a thorough data accuracy audit to find and fix every numerical, logical,
 After fixes, all 6 dashboard queries were re-run against the database:
 - Executive KPIs: 778 POs, $79.6M spend, 8 suppliers, 28.2 avg risk
 - All 8 suppliers showing realistic risk scores (3.7 to 47.4)
-- OTD ranging from 79.8% (São Paulo) to 98.9% (Houston) — realistic variation
+- OTD ranging from 79.8% (São Paulo) to 98.9% (Houston), which matches realistic variation
 - CCC: −4.62 days (strong working capital position)
 - Zero FK orphans across all tables
 
 ---
 
-## 10. Phase 9 — Final Integrity Review & Cleanup
+## 10. Phase 9: Final Integrity Review and Cleanup
 
 ### Goal
 Three recursive reviews ensuring zero errors, followed by project synchronization.
@@ -406,7 +407,7 @@ Read every file in the project. Identified:
 
 ### Review 2: Data & Query Integrity
 - Verified all 19 table row counts
-- Ran all 6 key dashboard queries — all returned valid data
+- Ran all 6 key dashboard queries. All returned valid data
 - Confirmed zero FK orphans (purchase_orders → suppliers, fact_procurement → dimensions)
 - Validated `financial_kpis` column names match dashboard queries
 
@@ -441,18 +442,55 @@ Read every file in the project. Identified:
 - `analytics/advanced_analytics.py` → Default `currency_id=3` (NGN)
 
 **New files created (5):**
-- `tests/conftest.py` — Shared pytest fixtures
-- `tests/test_config.py` — Config module tests
-- `tests/test_advanced_analytics.py` — Analytics module tests
-- `tests/test_data_ingestion.py` — ETL module tests
-- `tests/test_integration.py` — Database connectivity and table integrity tests
+- `tests/conftest.py`: Shared pytest fixtures
+- `tests/test_config.py`: Config module tests
+- `tests/test_advanced_analytics.py`: Analytics module tests
+- `tests/test_data_ingestion.py`: ETL module tests
+- `tests/test_integration.py`: Database connectivity and table integrity tests
 - This `PROJECT_WALKTHROUGH.md`
 
 **Test results:** 12/12 tests passing
 
 ---
 
-## 11. Final Architecture
+## 11. Phase 10: LinkedIn Carousel Generator
+
+### Goal
+Create a professional LinkedIn PDF carousel (8 slides, 1080×1350 portrait) for technical thought-leadership positioning of the Procurement Intelligence Engine.
+
+### What Was Built
+
+**Generator script:** `generate_linkedin_carousel.py` is a self-contained Pillow-based image generator that produces 8 export-ready slides and a combined PDF carousel.
+
+**Design system:**
+- **Typography:** Inter font family (ExtraBold, Bold, SemiBold, Medium, Regular, Light) downloaded at build time
+- **Colour palette:** Navy `#0F2742` · Teal `#0FA3B1` · Slate `#3D4F63` · Light `#F6F8FB` · Amber `#F59E0B`
+- **Optimised text hierarchy:** Purpose-built text colours for dark vs. light backgrounds (TEAL_BRIGHT, PEARL, SILVER, INK, GRAPHITE, AMBER_GLOW) to maximise contrast and readability
+- **Visual elements:** Dot-grid backgrounds, circuit/data-flow lines, rounded cards, accent bars, numbered badges, callout boxes with left-border accents
+
+**Slide content:**
+
+| Slide | Title | Purpose |
+|-------|-------|---------|
+| 1 | Procurement Intelligence Engine | Hook: project introduction with dashboard mockup |
+| 2 | Why procurement teams stay reactive | Problem statement with numbered pain points |
+| 3 | What I built | Solution: vertical architecture flow diagram |
+| 4 | Capabilities delivered | Core capabilities in card layout |
+| 5 | How decisions improve in practice | Decision impact with icon badges |
+| 6 | Built for real implementation | Engineering & deployment tech stack grid |
+| 7 | Strategic value for procurement leaders | Business value with large numbering |
+| 8 | Open to collaboration | CTA with tags, contact placeholders |
+
+**Output:**
+- 8 individual PNG files (1080×1350, RGB)
+- 1 combined PDF (`Procurement_Intelligence_Engine_Carousel.pdf`)
+- All output in `carousel_output/` directory
+
+**Personalisation:** Three constants at the top of the script (`YOUR_NAME`, `YOUR_TITLE`, `GITHUB_LINK`) allow quick customisation before regeneration.
+
+---
+
+## 12. Final Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -497,7 +535,7 @@ Read every file in the project. Identified:
 
 ---
 
-## 12. Database Schema Reference
+## 13. Database Schema Reference
 
 ### Currency Mapping
 | currency_id | currency_code | Used By |
@@ -533,7 +571,7 @@ Read every file in the project. Identified:
 
 ---
 
-## 13. File Manifest
+## 14. File Manifest
 
 ### Final Project Structure (after cleanup)
 ```
@@ -548,6 +586,16 @@ procurement-intelligence-engine/
 │   └── secrets.toml.example          # Template for credentials
 ├── analytics/
 │   └── advanced_analytics.py         # Monte Carlo FX + risk scoring (279 lines)
+├── carousel_output/                  # LinkedIn carousel artefacts (generated)
+│   ├── slide_1.png                   # Hook slide
+│   ├── slide_2.png                   # Problem slide
+│   ├── slide_3.png                   # Solution slide
+│   ├── slide_4.png                   # Capabilities slide
+│   ├── slide_5.png                   # Impact slide
+│   ├── slide_6.png                   # Engineering slide
+│   ├── slide_7.png                   # Value slide
+│   ├── slide_8.png                   # CTA slide
+│   └── Procurement_Intelligence_Engine_Carousel.pdf  # Combined PDF
 ├── database/
 │   └── add_constraints_migration.sql # FK + CHECK constraints (288 lines)
 ├── data_ingestion/
@@ -563,6 +611,7 @@ procurement-intelligence-engine/
 ├── config.py                         # DB connection (20 lines)
 ├── docker-compose.yml                # Streamlit + MySQL stack
 ├── Dockerfile                        # Streamlit container
+├── generate_linkedin_carousel.py     # LinkedIn PDF carousel generator (875 lines)
 ├── PROJECT_WALKTHROUGH.md            # This document
 ├── pytest.ini                        # pytest configuration
 ├── README.md                         # Quick-start guide
@@ -584,4 +633,4 @@ requests        # Live FX API calls
 
 ---
 
-*End of walkthrough. Generated February 20, 2026.*
+*End of walkthrough. Last updated February 23, 2026.*
