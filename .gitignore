@@ -21,3 +21,8 @@ settings.json
 
 # Streamlit secrets (never commit)
 .streamlit/secrets.toml
+
+# LinkedIn carousel generation artifacts
+carousel_output/
+generate_linkedin_carousel.py
+generate_linkedin_carousel_pptx.py
