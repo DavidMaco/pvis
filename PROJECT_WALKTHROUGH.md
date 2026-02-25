@@ -30,11 +30,11 @@
 
 The Procurement Intelligence Engine is a production-grade data analytics system designed for manufacturing organizations to:
 
-- **Monitor FX volatility** using Monte Carlo simulation (10,000 Geometric Brownian Motion paths)
-- **Score supplier risk** using a 5-factor composite model (lead time, defects, OTD, cost variance, FX exposure)
+- **Monitor FX volatility** using regime-weighted Monte Carlo simulation (10,000 Geometric Brownian Motion paths)
+- **Score supplier risk** using a 6-factor composite model (OTD, defects, cost variance, FX exposure, lead-time consistency, geographic risk)
 - **Analyze procurement spend** across 8 international suppliers, 50 materials, and 5 currencies
 - **Optimize working capital** through DIO, DPO, and Cash Conversion Cycle metrics
-- **Support executive decisions** via a 7-page interactive Streamlit dashboard
+- **Support executive decisions** via an 8-page interactive Streamlit dashboard and a Power BI decision layer
 
 The project evolved through 9 distinct phases, progressing from a basic Flask prototype to a fully audited, production-ready Streamlit application.
 
@@ -208,7 +208,7 @@ Build a warehouse ETL that transforms transactional data into analytical dimensi
 | 3 | `populate_dim_supplier()` | `dim_supplier` | Joins `suppliers` ↔ `countries`, assigns surrogate keys |
 | 4 | `populate_fact_procurement()` | `fact_procurement` | Joins PO items with closest-date FX rate, calculates `total_usd_value = local_value / rate_to_usd` |
 | 5 | `populate_supplier_spend_summary()` | `supplier_spend_summary` | Annual USD spend per supplier using avg FX rate |
-| 6 | `populate_supplier_performance_metrics()` | `supplier_performance_metrics` | 5-factor composite risk score |
+| 6 | `populate_supplier_performance_metrics()` | `supplier_performance_metrics` | 6-factor composite risk score |
 | 7 | `populate_financial_kpis()` | `financial_kpis` | DIO, DPO, CCC from payables/receivables/inventory |
 
 **FX Rate Lookup Logic:**
@@ -230,7 +230,7 @@ This compares ACTUAL delivery date against the supplier's PUBLISHED `lead_time_d
 
 **Composite Risk Score Formula:**
 ```
-Risk = (0.30 × LeadTimeNorm + 0.35 × DefectNorm + 0.25 × (1 - OTD) + 0.10 × FXExposure) × 100
+Risk = (0.22 × (1 - OTD) + 0.20 × DefectNorm + 0.18 × CostVarianceNorm + 0.18 × FXExposureNorm + 0.12 × LeadTimeNorm + 0.10 × GeoRiskNorm) × 100
 ```
 Each factor normalized to [0, 1] using min-max scaling across all suppliers.
 
@@ -247,7 +247,7 @@ Where:
 ## 6. Phase 5: Advanced Analytics Engine
 
 ### Goal
-Build Monte Carlo FX simulation and composite supplier risk scoring modules.
+Build regime-weighted Monte Carlo FX simulation and expanded composite supplier risk scoring modules.
 
 ### Implementation: `analytics/advanced_analytics.py` (279 lines)
 
