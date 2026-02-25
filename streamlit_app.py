@@ -578,16 +578,20 @@ elif page == "📈 FX Volatility & Monte Carlo":
         p50 = np.percentile(paths, 50, axis=0)
         p95 = np.percentile(paths, 95, axis=0)
 
-        # Summary metrics
-        mcol1, mcol2, mcol3, mcol4, mcol5 = st.columns(5)
-        mcol1.metric(f"Current Rate ({current_rate_source})", f"{current_rate:,.4f}")
-        mcol2.metric("P5 (worst)", f"{p5[-1]:,.4f}")
-        mcol3.metric("P50 (median)", f"{p50[-1]:,.4f}")
-        mcol4.metric("P95 (best)", f"{p95[-1]:,.4f}")
-        mcol5.metric("High-Vol Regime Weight", f"{regime['p_high']:.1%}")
+        # Summary metrics (de-cluttered layout)
+        st.subheader("Simulation Snapshot")
+        top1, top2, top3 = st.columns(3)
+        top1.metric("Current Rate", f"{current_rate:,.4f}")
+        top2.metric("P50 (Median)", f"{p50[-1]:,.4f}")
+        top3.metric("High-Vol Weight", f"{regime['p_high']:.1%}")
+
+        bot1, bot2 = st.columns(2)
+        bot1.metric("P5 (Downside)", f"{p5[-1]:,.4f}")
+        bot2.metric("P95 (Upside)", f"{p95[-1]:,.4f}")
 
         st.caption(
-            f"Regime detection: low-vol μ={regime['mu_low']:.6f}, σ={regime['sigma_low']:.6f}; "
+            f"Rate source: {current_rate_source}. "
+            f"Regime detection — low-vol μ={regime['mu_low']:.6f}, σ={regime['sigma_low']:.6f}; "
             f"high-vol μ={regime['mu_high']:.6f}, σ={regime['sigma_high']:.6f}."
         )
 
