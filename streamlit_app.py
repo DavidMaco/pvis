@@ -301,8 +301,7 @@ if page == "🏠 Executive Summary":
         "**cash conversion** performance."
     )
 
-    # ── KPI row ──────────────────────────────────────────────────────────────
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    # ── KPI snapshot (de-cluttered) ─────────────────────────────────────────
 
     # Total spend
     spend_df = run_query(
@@ -385,16 +384,18 @@ if page == "🏠 Executive Summary":
     # Current NGN rate — live API with DB fallback
     ngn_rate = _fetch_live_ngn_rate()
 
-    col1.metric("Total Spend (USD)", f"${total_spend:,.0f}")
-    col2.metric("FX Exposure", f"{fx_pct:.1f}%")
-    col3.metric("Avg Risk Score", f"{avg_risk:.1f}")
-    col4.metric("CCC (days)", f"{ccc_val:,.0f}")
-    col5.metric("USD/NGN (live)", f"₦{ngn_rate:,.2f}")
-    col6.metric("Cost Volatility Index", f"{pcvi:.1f}%")
+    st.subheader("KPI Snapshot")
+    core1, core2, core3, core4 = st.columns(4)
+    core1.metric("Total Spend", f"${total_spend:,.0f}")
+    core2.metric("FX Exposure", f"{fx_pct:.1f}%")
+    core3.metric("Avg Risk", f"{avg_risk:.1f}")
+    core4.metric("CCC", f"{ccc_val:,.0f} days")
 
-    f1, f2 = st.columns(2)
-    f1.metric("Working Capital Forecast (CCC +3m)", f"{wc_forecast:,.1f} days")
-    f2.metric("Scenario Delta (Stress +20%)", f"${stress_delta:,.0f}")
+    dec1, dec2, dec3, dec4 = st.columns(4)
+    dec1.metric("USD/NGN", f"₦{ngn_rate:,.2f}")
+    dec2.metric("Cost Volatility", f"{pcvi:.1f}%")
+    dec3.metric("WC Forecast (+3m)", f"{wc_forecast:,.1f} days")
+    dec4.metric("Stress Delta (+20%)", f"${stress_delta:,.0f}")
 
     st.divider()
 
