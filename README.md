@@ -1,33 +1,17 @@
-<p align="center">
-  <img src="https://img.icons8.com/fluency/128/combo-chart.png" alt="PVIS Logo" width="96"/>
-</p>
+# PVIS: Procurement Volatility Intelligence System
 
-<h1 align="center">PVIS: Procurement Volatility Intelligence System</h1>
+![PVIS Logo](https://img.icons8.com/fluency/128/combo-chart.png)
 
-<p align="center">
-  <strong>A procurement analytics platform that combines Monte Carlo simulation, real-time FX monitoring, composite supplier risk scoring, and working capital optimization in a single executive dashboard.</strong>
-</p>
+**A procurement analytics platform that combines Monte Carlo simulation, real-time FX monitoring, composite supplier risk scoring, and working capital optimization in a single executive dashboard.**
 
-<p align="center">
-  <a href="https://github.com/DavidMaco/pvis/actions"><img src="https://github.com/DavidMaco/pvis/actions/workflows/python-app.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/python-3.13%2B-blue?logo=python&logoColor=white" alt="Python 3.13+">
-  <img src="https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white" alt="MySQL 8.0">
-  <img src="https://img.shields.io/badge/Streamlit-1.54-FF4B4B?logo=streamlit&logoColor=white" alt="Streamlit">
-  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
-  <a href="https://davidmaco-pvis.streamlit.app"><img src="https://img.shields.io/badge/Live_Demo-Streamlit_Cloud-FF4B4B?logo=streamlit&logoColor=white" alt="Live Demo"></a>
-</p>
+[![CI](https://github.com/DavidMaco/pvis/actions/workflows/python-app.yml/badge.svg)](https://github.com/DavidMaco/pvis/actions)
+![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue?logo=python&logoColor=white)
+![MySQL 8.0](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.54-FF4B4B?logo=streamlit&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit_Cloud-FF4B4B?logo=streamlit&logoColor=white)](https://davidmaco-pvis.streamlit.app)
 
-<p align="center">
-  <a href="#-live-demo">Live Demo</a> •
-  <a href="#-key-features">Features</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-getting-started">Getting Started</a> •
-  <a href="#-dashboard-pages">Dashboard</a> •
-  <a href="#-import-your-company-data">Your Data</a> •
-  <a href="#-deployment">Deploy</a> •
-  <a href="#-data-model">Data Model</a> •
-  <a href="#-contributing">Contributing</a>
-</p>
+[Live Demo](#-live-demo) • [Features](#-key-features) • [Architecture](#-architecture) • [Getting Started](#-getting-started) • [Dashboard](#-dashboard-pages) • [Your Data](#-import-your-company-data) • [Deploy](#-deployment) • [Data Model](#-data-model) • [Contributing](#-contributing)
 
 ---
 
@@ -44,7 +28,7 @@
 Manufacturing procurement teams face three critical blind spots:
 
 | Blind Spot | Business Impact | PVIS Solution |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | **FX Volatility** | A 15% NGN devaluation can wipe out ₦180M+ in margin on a single quarter | Regime-weighted Monte Carlo simulation (10K-50K paths) with live API rates, P5/P50/P95 bands, and VaR/CVaR |
 | **Supplier Risk** | Late deliveries and defects cascade into production stoppages | Composite risk scoring (6 weighted factors including geographic risk index) with automated negotiation playbooks |
 | **Cash Leakage** | Cost variances against standard costs go undetected across 1,000+ PO lines | Spend decomposition by supplier × category × year with leakage attribution |
@@ -56,6 +40,7 @@ PVIS turns raw procurement data into **actionable intelligence**. It provides sp
 ## ✨ Key Features
 
 ### Analytics Engine
+
 - **Regime-Weighted Monte Carlo FX Simulation:** Low/high volatility regime detection with separate drift and volatility estimates, then weighted-path simulation over up to 1,095 trading days
 - **Composite Supplier Risk Scoring:** Weighted model: on-time delivery, defect rate, cost variance, FX sensitivity, lead-time consistency, and geographic risk index
 - **Cash Conversion Cycle Optimization:** DIO/DPO modeling with target scenario recommendations
@@ -64,6 +49,7 @@ PVIS turns raw procurement data into **actionable intelligence**. It provides sp
 - **FX Stress Testing and Risk Metrics:** Interactive scenario planner, VaR/CVaR, and explicit FX shock sensitivity (±10%, ±20%)
 
 ### Data Platform
+
 - **Live Exchange Rates:** Dual-API failover (open.er-api.com to frankfurter.dev), 150+ currencies including NGN
 - **Star-Schema Data Warehouse:** Dimensional model (3 dimensions, 1 fact table) with ETL pipeline
 - **3-Year Historical Backcast:** Realistic procurement data generator with configurable parameters
@@ -71,6 +57,7 @@ PVIS turns raw procurement data into **actionable intelligence**. It provides sp
 - **Company Data Upload:** Interactive file uploader in the dashboard to run simulations on your own data
 
 ### Dashboard
+
 - **8 Interactive Pages:** Executive Summary, FX Volatility & Monte Carlo, Supplier Risk Analysis, Spend & Cost Analysis, Working Capital, Scenario Planning, Company Data Upload, Pipeline Runner
 - **Real-Time KPIs:** Live USD/NGN rate, total spend, FX exposure %, average risk score, CCC days, Procurement Cost Volatility Index, and Working Capital Forecast
 - **Auto-Negotiation Playbooks:** Per-supplier action items generated from risk metrics
@@ -81,7 +68,7 @@ PVIS turns raw procurement data into **actionable intelligence**. It provides sp
 
 ## 🏗 Architecture
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                           DATA SOURCES                                       │
 │                                                                              │
@@ -148,7 +135,7 @@ PVIS turns raw procurement data into **actionable intelligence**. It provides sp
 ## 🛠 Tech Stack
 
 | Layer | Technology | Purpose |
-|:------|:-----------|:--------|
+| :------ | :----------- | :-------- |
 | **Database** | MySQL 8.0 | 19-table transactional store + star-schema warehouse |
 | **Cloud DB** | Aiven MySQL | Streamlit Cloud connectivity (free tier) |
 | **ORM** | SQLAlchemy + PyMySQL | Connection pooling, parameterized queries |
@@ -167,7 +154,7 @@ PVIS turns raw procurement data into **actionable intelligence**. It provides sp
 ### Prerequisites
 
 | Requirement | Version | Check |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | Python | 3.13+ | `python --version` |
 | MySQL | 8.0+ | `mysql --version` |
 | Git | Any | `git --version` |
@@ -225,21 +212,27 @@ python -m pytest tests/ -v
 ## 📊 Dashboard Pages
 
 ### 1. 🏠 Executive Summary
+
 Real-time KPI cards (total spend, FX exposure %, avg risk score, CCC days, live USD/NGN rate, Procurement Cost Volatility Index) plus Working Capital Forecast, scenario delta, supplier risk ranking, monthly trend, and supplier risk heatmap.
 
 ### 2. 📈 FX Volatility & Monte Carlo
+
 Select any currency, configure horizon (30-1,095 days) and simulations (1K-50K paths). Renders historical rate chart with live marker, regime-weighted P5/P50/P95 fan chart, terminal distribution, VaR/CVaR, and FX shock sensitivity (±10%, ±20%).
 
 ### 3. 🏭 Supplier Risk Analysis
+
 Normalized risk heatmap across core risk metrics, detailed performance table with conditional formatting, lead-time trend, cost-volatility trend, and country risk exposure map.
 
 ### 4. 💰 Spend & Cost Analysis
+
 Spend donut charts by supplier and category, cost leakage waterfall by material category, annual spend grouped bar chart with year-over-year comparison.
 
 ### 5. 🏦 Working Capital
+
 Inventory value trend, payables/receivables dual timeline, CCC breakdown (DIO/DPO), inventory turnover KPI, and CCC scenario simulation (Base, Stress, Optimized).
 
 ### 6. 🔄 Scenario Planning
+
 Interactive FX stress test slider (-30% to +50%), landed cost model component breakdown, procurement volatility audit deliverables, multi-scenario comparison table, and per-supplier negotiation action playbooks.
 
 ---
@@ -252,9 +245,11 @@ PVIS now includes a Power BI semantic layer in `powerbi/`:
 - `powerbi/PVIS_Dashboard_BUILD.md`: Build guide, visual mapping, and starter DAX measures
 
 ### 7. 📂 Company Data Upload
+
 Drag-and-drop file uploader for company CSV or ZIP data. It validates, processes, and runs the full analytics pipeline on your own procurement data from the browser.
 
 ### 8. ⚙️ Pipeline Runner
+
 One-click buttons to regenerate seed data, run ETL, execute Monte Carlo simulation, and refresh supplier risk scores. Includes database health check with row counts for all 11 key tables.
 
 ---
@@ -264,9 +259,11 @@ One-click buttons to regenerate seed data, run ETL, execute Monte Carlo simulati
 PVIS supports two methods for using your own procurement data:
 
 ### Method A: Dashboard Upload (Recommended)
+
 Navigate to the **📂 Company Data Upload** page in the dashboard and drag-and-drop your CSV files or a ZIP archive. The system validates, imports, runs ETL + analytics, and refreshes all dashboard pages automatically.
 
 ### Method B: Command-Line Import
+
 ```powershell
 # Prepare CSVs (use external_data_samples/ as templates)
 mkdir .\company_data
@@ -280,7 +277,7 @@ python analytics\advanced_analytics.py
 ### Required CSV Files
 
 | File | Key Columns | Description |
-|:-----|:------------|:------------|
+| :----- | :------------ | :------------ |
 | `suppliers.csv` | supplier_name, country, lead_time, defect_rate | Supplier master data |
 | `materials.csv` | material_name, category, standard_cost | Material catalog |
 | `purchase_orders.csv` | po_date, supplier, total_amount, currency | PO headers |
@@ -306,6 +303,7 @@ docker-compose up --build
 1. Fork/push to GitHub
 2. Connect at [share.streamlit.io](https://share.streamlit.io)
 3. Set **Secrets** (Settings → Secrets):
+
    ```toml
    [database]
    host = "your-cloud-mysql-host"
@@ -314,6 +312,7 @@ docker-compose up --build
    password = "your_password"
    name = "your_database"
    ```
+
 4. Deploy, or skip secrets to run in Demo Mode
 
 ---
@@ -322,7 +321,7 @@ docker-compose up --build
 
 ### Transactional Layer (19 Tables)
 
-```
+```text
 countries ─┐
             ├── suppliers ──── purchase_orders ──── purchase_order_items
 currencies ─┘                        │
@@ -335,7 +334,7 @@ inventory_snapshots    payables_summary    receivables_summary
 
 ### Warehouse Layer (Star Schema)
 
-```
+```text
            dim_date
               │
 dim_supplier ─┼── fact_procurement
@@ -351,7 +350,7 @@ dim_supplier ─┼── fact_procurement
 ### Key Metrics
 
 | Metric | Formula / Method |
-|:-------|:-----------------|
+| :------- | :----------------- |
 | **Composite Risk Score** | 0.30 × lead_time_vol + 0.35 × defect_rate + 0.25 × (1 − OTD%) + 0.10 × fx_exposure |
 | **Monte Carlo FX** | GBM: S(t+1) = S(t) × exp((μ − σ²/2)Δt + σ√Δt × Z), Z ~ N(0,1) |
 | **Cash Conversion Cycle** | CCC = DIO − DPO (days inventory outstanding − days payable outstanding) |
@@ -362,7 +361,7 @@ dim_supplier ─┼── fact_procurement
 
 ## 📁 Repository Structure
 
-```
+```text
 pvis/
 ├── streamlit_app.py                  # 8-page Streamlit executive dashboard
 ├── demo_data.py                      # Synthetic data engine for demo mode
@@ -438,12 +437,10 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## 👤 Author
 
-**David Maco**
+### David Maco
 
 - GitHub: [@DavidMaco](https://github.com/DavidMaco)
 
 ---
 
-<p align="center">
-  <sub>Built with ❤️ for procurement intelligence</sub>
-</p>
+Built with ❤️ for procurement intelligence

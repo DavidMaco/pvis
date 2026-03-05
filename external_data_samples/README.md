@@ -5,14 +5,17 @@ This directory contains example CSV files showing the expected format for import
 ## Quick Start
 
 1. **Copy the sample files** to a working directory (Windows PowerShell):
+
    ```powershell
    cp -Recurse external_data_samples\* .\my_company_data\
    ```
+
    Or using File Explorer: Right-click external_data_samples → Copy, then paste as my_company_data
 
 2. **Edit the CSV files** with your company data. See `EXTERNAL_DATA_GUIDE.md` for field specifications.
 
 3. **Run the import**:
+
    ```powershell
    python data_ingestion\external_data_loader.py --input-dir .\my_company_data
    ```
@@ -34,6 +37,7 @@ This directory contains example CSV files showing the expected format for import
 ## For More Information
 
 See `EXTERNAL_DATA_GUIDE.md` for:
+
 - Detailed field specifications
 - Data validation rules
 - Common issues & solutions

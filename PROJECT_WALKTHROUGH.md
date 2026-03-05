@@ -1,4 +1,5 @@
 # PROJECT WALKTHROUGH
+
 ## Building the Procurement Intelligence Engine: A Complete Build History
 
 **Document Date:** February 23, 2026
@@ -10,7 +11,7 @@
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)
-2. [Phase 1: Foundation (Scaffold and Prototyping)](#2-phase-1-foundation-scaffold-and-prototyping)
+2. [Phase 1: Foundation (Scaffold and Prototyping)](#2-phase-1-foundation)
 3. [Phase 2: Database Schema and Constraints](#3-phase-2-database-schema-and-constraints)
 4. [Phase 3: Realistic Data Generation](#4-phase-3-realistic-data-generation)
 5. [Phase 4: Star-Schema ETL Pipeline](#5-phase-4-star-schema-etl-pipeline)
@@ -43,12 +44,14 @@ The project evolved through 9 distinct phases, progressing from a basic Flask pr
 ## 2. Phase 1: Foundation
 
 ### Goal
+
 Scaffold a basic procurement analytics platform with ETL, supplier intelligence, risk modeling, and a web dashboard.
 
 ### What Was Built
 
 **Project structure:**
-```
+
+```text
 procurement-intelligence-engine/
 ├── data_ingestion/
 │   ├── etl_pipeline.py        # CSV-based ETL with SQLAlchemy ORM
@@ -68,9 +71,11 @@ procurement-intelligence-engine/
 ├── requirements.txt           # All deps including tensorflow, spacy, flask
 ├── Dockerfile                 # Gunicorn + Flask container
 └── docker-compose.yml         # Port 5000
+
 ```
 
 **Key decisions:**
+
 - MySQL database `pro_intel_2` chosen over SQLite for production viability
 - SQLAlchemy used for ORM (Supplier and Invoice models)
 - Initial analytics used scikit-learn for ML prototyping (LogisticRegression, LinearRegression)
@@ -79,6 +84,7 @@ procurement-intelligence-engine/
 - GitHub Actions CI configured for automated testing
 
 **Artifacts produced:**
+
 - Initial commit pushed to GitHub (`DavidMaco/Procurement_Intelligence_Proj1`)
 - README.md, .gitignore, GitHub CI workflow
 
@@ -87,6 +93,7 @@ procurement-intelligence-engine/
 ## 3. Phase 2: Database Schema and Constraints
 
 ### Goal
+
 Design a comprehensive 18-table relational schema supporting both transactional operations and analytical warehousing.
 
 ### Schema Design
@@ -94,7 +101,7 @@ Design a comprehensive 18-table relational schema supporting both transactional 
 **Transactional tables (11):**
 
 | Table | Purpose | Key Columns |
-|-------|---------|-------------|
+| ------- | --------- | ------------- |
 | `countries` | Reference dimension | country_id, country_name, region |
 | `currencies` | 5 currencies (USD, EUR, NGN, GBP, CNY) | currency_id, currency_code |
 | `suppliers` | 8 international suppliers | supplier_id, supplier_name, country_id, default_currency_id, lead_time_days |
@@ -110,7 +117,7 @@ Design a comprehensive 18-table relational schema supporting both transactional 
 **Warehouse tables (8):**
 
 | Table | Purpose |
-|-------|---------|
+| ------- | --------- |
 | `dim_date` | 1,461-row date dimension (2023-2026) |
 | `dim_supplier` | Surrogate-keyed supplier dimension |
 | `dim_material` | Surrogate-keyed material dimension |
@@ -123,6 +130,7 @@ Design a comprehensive 18-table relational schema supporting both transactional 
 ### Constraints Migration (`database/add_constraints_migration.sql`)
 
 A 288-line SQL migration was written adding:
+
 - **15 foreign key constraints** (e.g., `fk_po_supplier`, `fk_poi_material`, `fk_fx_currency`)
 - **13 CHECK constraints** (e.g., `risk_index` 0-100, `quantity > 0`, `defect_rate` 0-1)
 - **7 composite indexes** for analytical query performance
@@ -131,7 +139,7 @@ A 288-line SQL migration was written adding:
 **Currency ID mapping (critical for correctness):**
 
 | ID | Code | Notes |
-|----|------|-------|
+| ---- | ------ | ------- |
 | 1 | USD | Base currency with no FX rates stored |
 | 2 | EUR | European suppliers |
 | 3 | NGN | Nigerian Naira, the primary volatility target |
@@ -143,6 +151,7 @@ A 288-line SQL migration was written adding:
 ## 4. Phase 3: Realistic Data Generation
 
 ### Goal
+
 Replace prototype synthetic data with 3 years of realistic procurement data including live FX rates.
 
 ### Implementation: `data_ingestion/seed_realistic_data.py` (504 lines)
@@ -150,6 +159,7 @@ Replace prototype synthetic data with 3 years of realistic procurement data incl
 **Key capabilities:**
 
 #### Live FX Rate Fetching
+
 The seed script fetches **real-time FX rates** from three APIs with cascading fallback:
 
 1. **open.er-api.com** (primary, supports all currencies including NGN)
@@ -159,19 +169,22 @@ The seed script fetches **real-time FX rates** from three APIs with cascading fa
 An HTTP client with `User-Agent: PVIS/1.1` prevents 403 blocks from APIs.
 
 #### NGN Historical Backcast
+
 Since no free API provides NGN historical data, the system:
+
 - Starts at 65% of the live spot rate
 - Applies an **accelerating depreciation curve** (power 1.3) modeling real NGN devaluation
 - Adds seasonality (sinusoidal) and daily noise (±0.3%)
 - Pins the final date exactly to the live market rate
 
 #### EUR/GBP Historical Rates
+
 Real historical data from Frankfurter's time-series API (ECB source).
 
 #### Supplier Ecosystem
 
 | Supplier | Country | Currency | OTD Probability |
-|----------|---------|----------|----------------|
+| ---------- | --------- | ---------- | ---------------- |
 | Houston Petrochem Inc | USA | USD | 98% |
 | Bavaria Chem GmbH | Germany | EUR | 90% |
 | Lagos Polymers Ltd | Nigeria | NGN | 80% |
@@ -184,6 +197,7 @@ Real historical data from Frankfurter's time-series API (ECB source).
 Each supplier has a calibrated on-time delivery probability controlling whether `delivery_date ≤ order_date + lead_time_days`.
 
 #### Data Volumes Generated
+
 - 8 suppliers × 3 years of POs → ~778 purchase orders, ~1,952 line items
 - 4 currencies × ~3 years daily rates → ~4,384 FX records
 - ~106 quality incidents (5-10% of deliveries)
@@ -195,6 +209,7 @@ Each supplier has a calibrated on-time delivery probability controlling whether 
 ## 5. Phase 4: Star-Schema ETL Pipeline
 
 ### Goal
+
 Build a warehouse ETL that transforms transactional data into analytical dimensions, facts, and aggregates.
 
 ### Implementation: `data_ingestion/populate_warehouse.py` (477 lines)
@@ -202,7 +217,7 @@ Build a warehouse ETL that transforms transactional data into analytical dimensi
 **ETL functions (executed in order):**
 
 | # | Function | Target Table | Logic |
-|---|----------|-------------|-------|
+| --- | ---------- | ------------- | ------- |
 | 1 | `populate_dim_date()` | `dim_date` | 4-year calendar (2023-2026), date_key = YYYYMMDD |
 | 2 | `populate_dim_material()` | `dim_material` | Maps material_id → surrogate material_key |
 | 3 | `populate_dim_supplier()` | `dim_supplier` | Joins `suppliers` ↔ `countries`, assigns surrogate keys |
@@ -212,33 +227,46 @@ Build a warehouse ETL that transforms transactional data into analytical dimensi
 | 7 | `populate_financial_kpis()` | `financial_kpis` | DIO, DPO, CCC from payables/receivables/inventory |
 
 **FX Rate Lookup Logic:**
+
 For each PO item, the ETL finds the FX rate with the closest date ≤ the order date:
+
 ```sql
 LEFT JOIN fx_rates fr ON fr.currency_id = po.currency_id
     AND fr.rate_date = (
         SELECT MAX(rate_date) FROM fx_rates
         WHERE currency_id = po.currency_id AND rate_date <= po.order_date
     )
+
 ```
 
 **On-Time Delivery Calculation:**
+
 ```sql
 OTD % = COUNT(po.delivery_date <= DATE_ADD(po.order_date, INTERVAL s.lead_time_days DAY))
         / COUNT(*)
+
 ```
+
 This compares ACTUAL delivery date against the supplier's PUBLISHED `lead_time_days`, not the PO's `expected_delivery_date`.
 
 **Composite Risk Score Formula:**
-```
+
+```text
 Risk = (0.22 × (1 - OTD) + 0.20 × DefectNorm + 0.18 × CostVarianceNorm + 0.18 × FXExposureNorm + 0.12 × LeadTimeNorm + 0.10 × GeoRiskNorm) × 100
+
 ```
+
 Each factor normalized to [0, 1] using min-max scaling across all suppliers.
 
 **Cash Conversion Cycle:**
-```
+
+```text
 CCC = DIO − DPO
+
 ```
+
 Where:
+
 - DIO = (avg_inventory / annualized_cost) × 365
 - DPO = (avg_payable / annualized_spend) × 365
 
@@ -247,6 +275,7 @@ Where:
 ## 6. Phase 5: Advanced Analytics Engine
 
 ### Goal
+
 Build regime-weighted Monte Carlo FX simulation and expanded composite supplier risk scoring modules.
 
 ### Implementation: `analytics/advanced_analytics.py` (279 lines)
@@ -268,6 +297,7 @@ Where $Z \sim N(0,1)$ and $dt = 1/252$
 6. Store results in `fx_simulation_results` table
 
 **Latest results (NGN/USD):**
+
 - Current rate: 1,345.77
 - P5 (bear case): 1,338.91
 - P50 (median): 1,346.01
@@ -276,6 +306,7 @@ Where $Z \sim N(0,1)$ and $dt = 1/252$
 #### Supplier Risk Scoring
 
 Queries live transactional data and computes:
+
 - Average lead time (days) and standard deviation
 - Average defect rate from quality incidents
 - On-time delivery percentage
@@ -289,6 +320,7 @@ Normalizes each metric to [0, 1] and applies the weighted composite formula.
 ## 7. Phase 6: Streamlit Executive Dashboard
 
 ### Goal
+
 Replace the Flask prototype with a production-grade 7-page Streamlit dashboard.
 
 ### Implementation: `streamlit_app.py` (724 lines)
@@ -296,7 +328,7 @@ Replace the Flask prototype with a production-grade 7-page Streamlit dashboard.
 **Page structure:**
 
 | # | Page | Key Visuals |
-|---|------|-------------|
+| --- | ------ | ------------- |
 | 1 | **Executive Summary** | 4 KPI metrics (total POs, total spend, active suppliers, avg risk score) + monthly spend trend + risk distribution + top 5 materials |
 | 2 | **FX Volatility & Monte Carlo** | Live NGN rate from API + historical rate chart + inline 10K-path Monte Carlo simulation with fan chart and histogram |
 | 3 | **Supplier Risk Analysis** | Composite risk bar chart + detailed risk metrics table + risk score distribution histogram |
@@ -306,6 +338,7 @@ Replace the Flask prototype with a production-grade 7-page Streamlit dashboard.
 | 7 | **Pipeline Runner** | One-click buttons to re-run seed data, ETL, and FX simulation directly from the dashboard |
 
 **Key technical decisions:**
+
 - `@st.cache_resource` used for database engine (connection pooling)
 - `run_query()` helper wraps all SQL in `text()` for SQLAlchemy 2.0 compliance
 - Live NGN rate fetched from `open.er-api.com` on page load
@@ -314,6 +347,7 @@ Replace the Flask prototype with a production-grade 7-page Streamlit dashboard.
 - All `GROUP BY` clauses use full expressions (not aliases) for MySQL 8.0 ONLY_FULL_GROUP_BY compliance
 
 **Streamlit configuration (`.streamlit/config.toml`):**
+
 - Custom dark-blue theme (`#1d4f91` primary)
 - Headless mode for server deployment
 - XSRF protection enabled
@@ -324,20 +358,24 @@ Replace the Flask prototype with a production-grade 7-page Streamlit dashboard.
 ## 8. Phase 7: Production Hardening
 
 ### Goal
+
 Make the system deployment-ready with proper config management, containerization, and CI.
 
 ### Changes Made
 
 **`config.py`: Environment-aware configuration**
+
 ```python
 try:
     db = st.secrets["database"]  # Streamlit Cloud secrets
     DATABASE_URL = f"mysql+pymysql://{db['user']}:{db['password']}@{db['host']}:{db['port']}/{db['name']}"
 except Exception:
     DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:***@localhost:3306/pro_intel_2")
+
 ```
 
 **`Dockerfile`: Streamlit container**
+
 ```dockerfile
 FROM python:3.13-slim
 WORKDIR /app
@@ -347,9 +385,11 @@ COPY . /app
 EXPOSE 8501
 HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
 CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+
 ```
 
 **`docker-compose.yml`: Full stack**
+
 - Streamlit app container on port 8501
 - MySQL 8.0 container with persistent volume
 - Environment variable injection for credentials
@@ -357,6 +397,7 @@ CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.add
 **`.streamlit/secrets.toml.example`**: Template for credentials (never committed)
 
 **GitHub Actions CI** (`.github/workflows/python-app.yml`):
+
 - Triggers on push/PR to main
 - Python 3.13 on ubuntu-latest
 - Installs requirements.txt + pytest
@@ -369,12 +410,13 @@ CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.add
 ## 9. Phase 8: Comprehensive Accuracy Audit
 
 ### Goal
+
 Conduct a thorough data accuracy audit to find and fix every numerical, logical, and query error.
 
 ### Issues Found and Fixed (8 Critical Fixes)
 
 | # | Issue | Impact | Fix |
-|---|-------|--------|-----|
+| --- | ------- | -------- | ----- |
 | 1 | OTD always 100% | Useless metric | Changed OTD calc to compare actual delivery vs published `lead_time_days` |
 | 2 | DIO/DPO/CCC identity | CCC always = DIO − DPO with no real meaning | Rewrote to use actual inventory, payables, and receivables data |
 | 3 | Cost leakage label wrong | Misleading dashboard | Fixed label to accurately describe above-standard-cost analysis |
@@ -385,7 +427,9 @@ Conduct a thorough data accuracy audit to find and fix every numerical, logical,
 | 8 | Live NGN rate not displayed | Dashboard showed stale rate | Added API call to `open.er-api.com` on FX page load |
 
 ### Verification
+
 After fixes, all 6 dashboard queries were re-run against the database:
+
 - Executive KPIs: 778 POs, $79.6M spend, 8 suppliers, 28.2 avg risk
 - All 8 suppliers showing realistic risk scores (3.7 to 47.4)
 - OTD ranging from 79.8% (São Paulo) to 98.9% (Houston), which matches realistic variation
@@ -397,21 +441,26 @@ After fixes, all 6 dashboard queries were re-run against the database:
 ## 10. Phase 9: Final Integrity Review and Cleanup
 
 ### Goal
+
 Three recursive reviews ensuring zero errors, followed by project synchronization.
 
 ### Review 1: Full Code Audit
+
 Read every file in the project. Identified:
+
 - **15+ stale legacy files** from Phase 1 (Flask app, old analytics stubs, spaCy/sklearn modules, old ETL, sample CSV, pinned-requirements, etc.)
 - **7 config files** needing updates (Dockerfile, docker-compose, requirements, .gitignore, pytest.ini, CI workflow, README)
 - **1 code bug** (misleading default `currency_id=1` in `run_fx_simulation`)
 
 ### Review 2: Data & Query Integrity
+
 - Verified all 19 table row counts
 - Ran all 6 key dashboard queries. All returned valid data
 - Confirmed zero FK orphans (purchase_orders → suppliers, fact_procurement → dimensions)
 - Validated `financial_kpis` column names match dashboard queries
 
 ### Review 3: Runtime Verification
+
 - All Python files compile without syntax errors
 - All imports resolve (streamlit, pandas, numpy, plotly, sqlalchemy, requests, pymysql)
 - Advanced analytics module imports correctly
@@ -420,6 +469,7 @@ Read every file in the project. Identified:
 ### Cleanup Actions
 
 **Files deleted (25+):**
+
 - `app.py` (Flask entry point)
 - `ui/app.py` + `ui/__pycache__/` (Flask dashboard)
 - `analytics/supplier_scoring.py`, `spend_analysis.py`, `market_intelligence.py`, `price_forecast.py`, `risk_assessment.py` (old stubs)
@@ -432,6 +482,7 @@ Read every file in the project. Identified:
 - `settings.json`, `pytest.log`, `procurement.db`, `pro-intel-2-analytics/` (junk files)
 
 **Files updated (8):**
+
 - `Dockerfile` → Streamlit container (was Flask/Gunicorn)
 - `docker-compose.yml` → Port 8501 + MySQL service (was port 5000)
 - `requirements.txt` → 8 deps (was 15 including tensorflow, spacy, flask)
@@ -442,6 +493,7 @@ Read every file in the project. Identified:
 - `analytics/advanced_analytics.py` → Default `currency_id=3` (NGN)
 
 **New files created (5):**
+
 - `tests/conftest.py`: Shared pytest fixtures
 - `tests/test_config.py`: Config module tests
 - `tests/test_advanced_analytics.py`: Analytics module tests
@@ -456,6 +508,7 @@ Read every file in the project. Identified:
 ## 11. Phase 10: LinkedIn Carousel Generator
 
 ### Goal
+
 Create a professional LinkedIn PDF carousel (8 slides, 1080×1350 portrait) for technical thought-leadership positioning of the Procurement Intelligence Engine.
 
 ### What Was Built
@@ -463,6 +516,7 @@ Create a professional LinkedIn PDF carousel (8 slides, 1080×1350 portrait) for 
 **Generator script:** `generate_linkedin_carousel.py` is a self-contained Pillow-based image generator that produces 8 export-ready slides and a combined PDF carousel.
 
 **Design system:**
+
 - **Typography:** Inter font family (ExtraBold, Bold, SemiBold, Medium, Regular, Light) downloaded at build time
 - **Colour palette:** Navy `#0F2742` · Teal `#0FA3B1` · Slate `#3D4F63` · Light `#F6F8FB` · Amber `#F59E0B`
 - **Optimised text hierarchy:** Purpose-built text colours for dark vs. light backgrounds (TEAL_BRIGHT, PEARL, SILVER, INK, GRAPHITE, AMBER_GLOW) to maximise contrast and readability
@@ -471,7 +525,7 @@ Create a professional LinkedIn PDF carousel (8 slides, 1080×1350 portrait) for 
 **Slide content:**
 
 | Slide | Title | Purpose |
-|-------|-------|---------|
+| ------- | ------- | --------- |
 | 1 | Procurement Intelligence Engine | Hook: project introduction with dashboard mockup |
 | 2 | Why procurement teams stay reactive | Problem statement with numbered pain points |
 | 3 | What I built | Solution: vertical architecture flow diagram |
@@ -482,6 +536,7 @@ Create a professional LinkedIn PDF carousel (8 slides, 1080×1350 portrait) for 
 | 8 | Open to collaboration | CTA with tags, contact placeholders |
 
 **Output:**
+
 - 8 individual PNG files (1080×1350, RGB)
 - 1 combined PDF (`Procurement_Intelligence_Engine_Carousel.pdf`)
 - All output in `carousel_output/` directory
@@ -492,7 +547,7 @@ Create a professional LinkedIn PDF carousel (8 slides, 1080×1350 portrait) for 
 
 ## 12. Final Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                     LIVE FX APIs                            │
 │   open.er-api.com → exchangerate-api.com → frankfurter.app │
@@ -531,6 +586,7 @@ Create a professional LinkedIn PDF carousel (8 slides, 1080×1350 portrait) for 
 │  Page 6: Scenario Planning (FX impact calculator)            │
 │  Page 7: Pipeline Runner (re-run seed/ETL/analytics)         │
 └─────────────────────────────────────────────────────────────┘
+
 ```
 
 ---
@@ -538,8 +594,9 @@ Create a professional LinkedIn PDF carousel (8 slides, 1080×1350 portrait) for 
 ## 13. Database Schema Reference
 
 ### Currency Mapping
+
 | currency_id | currency_code | Used By |
-|-------------|--------------|---------|
+| ------------- | -------------- | --------- |
 | 1 | USD | Houston Petrochem, Mumbai Steel, São Paulo Resinas, Johannesburg Mining |
 | 2 | EUR | Bavaria Chem GmbH |
 | 3 | NGN | Lagos Polymers Ltd |
@@ -547,8 +604,9 @@ Create a professional LinkedIn PDF carousel (8 slides, 1080×1350 portrait) for 
 | 5 | CNY | Shenzhen Industrial Co |
 
 ### Table Row Counts (as of Feb 20, 2026)
+
 | Table | Rows |
-|-------|------|
+| ------- | ------ |
 | countries | 8 |
 | currencies | 5 |
 | suppliers | 8 |
@@ -574,7 +632,8 @@ Create a professional LinkedIn PDF carousel (8 slides, 1080×1350 portrait) for 
 ## 14. File Manifest
 
 ### Final Project Structure (after cleanup)
-```
+
+```text
 procurement-intelligence-engine/
 ├── .github/
 │   ├── copilot-instructions.md
@@ -617,10 +676,12 @@ procurement-intelligence-engine/
 ├── README.md                         # Quick-start guide
 ├── requirements.txt                  # 8 Python dependencies
 └── streamlit_app.py                  # 7-page executive dashboard (724 lines)
+
 ```
 
 ### Dependencies (`requirements.txt`)
-```
+
+```text
 pandas          # Data manipulation
 numpy           # Numerical computation + Monte Carlo
 sqlalchemy      # Database ORM
@@ -629,6 +690,7 @@ cryptography    # SSL for DB connections
 streamlit       # Dashboard framework
 plotly          # Interactive charts
 requests        # Live FX API calls
+
 ```
 
 ---
